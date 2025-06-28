@@ -1,0 +1,11 @@
+﻿{
+    "solution": {
+        "path": "extensions.slnx",
+        "projects": [
+            "Shiny.Extensions.DependencyInjection.SourceGenerators\\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj",
+            "Shiny.Extensions.DependencyInjection.Tests\\Shiny.Extensions.DependencyInjection.Tests.csproj",
+            "Shiny.Extensions.DependencyInjection\\Shiny.Extensions.DependencyInjection.csproj",
+            "Shiny.Extensions.WebHosting\\Shiny.Extensions.WebHosting.csproj"
+        ]
+    }
+}

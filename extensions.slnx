@@ -1,0 +1,17 @@
+﻿<Solution>
+  <Folder Name="/Solution/">
+    <File Path="LICENSE" />
+    <File Path="nuget.png" />
+    <File Path="version.json" />
+    <File Path=".github\PULL_REQUEST_TEMPLATE.md" />
+    <File Path=".github\ISSUE_TEMPLATE\bug_report.yml" />
+    <File Path=".github\ISSUE_TEMPLATE\feature_request.yml" />
+    <File Path=".github\workflows\build.yml" />
+    <File Path="Build.slnf" />
+  </Folder>
+  <Project Path="Sample\Sample.csproj" Type="Classic C#" />
+  <Project Path="Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" Type="Classic C#" />
+  <Project Path="Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" Type="Classic C#" />
+  <Project Path="Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" Type="Classic C#" />
+  <Project Path="Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj" Type="Classic C#" />
+</Solution>
