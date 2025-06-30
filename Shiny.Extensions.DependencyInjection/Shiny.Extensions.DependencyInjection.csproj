@@ -10,4 +10,8 @@
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.6" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj" />
+    </ItemGroup>
+
 </Project>

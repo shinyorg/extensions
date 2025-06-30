@@ -13,5 +13,7 @@
   <Project Path="Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" Type="Classic C#" />
   <Project Path="Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" Type="Classic C#" />
   <Project Path="Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" Type="Classic C#" />
+  <Project Path="Shiny.Extensions.Stores.Web\Shiny.Extensions.Stores.Web.csproj" Type="Classic C#" />
+  <Project Path="Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj" Type="Classic C#" />
   <Project Path="Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj" Type="Classic C#" />
 </Solution>

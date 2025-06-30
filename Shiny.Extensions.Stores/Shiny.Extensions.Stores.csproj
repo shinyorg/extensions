@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <BaseTfm>net9.0</BaseTfm>
+        <TargetFrameworks>$(BaseTfm)</TargetFrameworks>
+        <TargetFrameworks>$(TargetFrameworks);$(BaseTfm)-android</TargetFrameworks>
+        <TargetFrameworks>$(TargetFrameworks);$(BaseTfm)-ios</TargetFrameworks>
+        <TargetFrameworks>$(TargetFrameworks);$(BaseTfm)-maccatalyst</TargetFrameworks>
+        <TargetFrameworks Condition="'$(OS)' == 'Windows'">$(TargetFrameworks);net9.0-windows</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Shiny.Reflector" Version="1.4.0" />
+    </ItemGroup>
+
+    <!--
+    <ItemGroup>
+        <PackageReference Include="Nerdbank.GitVersioning" Version="3.7.112" PrivateAssets="All" />
+    </ItemGroup>
+    -->
+    
+    <ItemGroup>
+        <None Include="Platforms\**\*.cs" />
+        <Compile Remove="Platforms\**\*.cs" />
+
+        <!--
+        <None Include="$(MSBuildThisFileDirectory)nuget.png" Pack="true" PackagePath="icon.png" />
+        <None Include="$(MSBuildThisFileDirectory)nuget.txt" Pack="true" PackagePath="readme.txt" />
+        <None Include="$(MSBuildThisFileDirectory)readme.md" Pack="true" PackagePath="\" />
+        -->
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+        <Compile Include="Platforms\Android\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+        <Compile Include="Platforms\Apple\**\*.cs" />
+        <Compile Include="Platforms\iOS\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+        <Compile Include="Platforms\Windows\**\*.cs" />
+    </ItemGroup>
+</Project>
