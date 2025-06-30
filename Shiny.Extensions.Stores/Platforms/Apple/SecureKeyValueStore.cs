@@ -1,27 +1,19 @@
-﻿using System;
-using Foundation;
-using Security;
+﻿using Security;
 
 namespace Shiny.Extensions.Stores;
 
 
-public class SecureKeyValueStore : IKeyValueStore
+public class SecureKeyValueStore(ISerializer serializer) : IKeyValueStore
 {
     readonly object syncLock = new();
-    // readonly ISerializer serializer;
+
+    public string Service { get; set; }//= $"{platform.AppIdentifier}.secure";
     public SecAccessible DefaultAccessible { get; set; } = SecAccessible.Always;
-
-
-    // public SecureKeyValueStore(IosPlatform platform, ISerializer serializer)
-    // {
-    //     this.Service = $"{platform.AppIdentifier}.secure";
-    //     this.serializer = serializer;
-    // }
 
 
     public string Alias => "secure";
     public bool IsReadOnly => false;
-    public string Service { get; set; }
+    
 
     public void Clear()
     {
@@ -56,7 +48,7 @@ public class SecureKeyValueStore : IKeyValueStore
             if (resultCode == SecStatusCode.Success)
             {
                 var value = NSString.FromData(match!.ValueData!, NSStringEncoding.UTF8);
-                //result = this.serializer.Deserialize(type, value);
+                result = serializer.Deserialize(type, value);
             }
             return result;
         }
@@ -89,7 +81,7 @@ public class SecureKeyValueStore : IKeyValueStore
 
         lock (this.syncLock)
         {
-            var content = this.serializer.Serialize(value);
+            var content = serializer.Serialize(value);
             var record = new SecRecord(SecKind.GenericPassword)
             {
                 Account = key,

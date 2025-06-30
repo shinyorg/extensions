@@ -1,8 +1,4 @@
-﻿using System;
-using Foundation;
-using Shiny.Reflection;
-
-namespace Shiny.Extensions.Stores;
+﻿namespace Shiny.Extensions.Stores;
 
 
 public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
@@ -34,7 +30,7 @@ public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
             TypeCode.Int32 => (int)prefs.IntForKey(key),
             TypeCode.Single => (float)prefs.FloatForKey(key),
             TypeCode.String => prefs.StringForKey(key),
-            // _ => this.serializer.Deserialize(type, prefs.StringForKey(key))
+            _ => serializer.Deserialize(type, prefs.StringForKey(key))
         };
     });
 
@@ -73,10 +69,10 @@ public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
                 prefs.SetString((string)value, key);
                 break;
             
-            // default:
-            //     var @string = this.serializer.Serialize(value);
-            //     prefs.SetString(@string, key);
-            //     break;
+            default:
+                var @string = serializer.Serialize(value);
+                prefs.SetString(@string, key);
+                break;
         }
     });
 

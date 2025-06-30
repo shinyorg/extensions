@@ -1,7 +1,4 @@
-﻿using System;
-using Javax.Crypto;
-using Microsoft.Extensions.Logging;
-using Shiny.Reflection;
+﻿using Javax.Crypto;
 
 namespace Shiny.Extensions.Stores;
 
@@ -11,9 +8,8 @@ public class SecureKeyValueStore : IKeyValueStore
     readonly object syncLock = new();
     readonly SettingsKeyValueStore settingsStore;
     readonly AndroidKeyStore keyStore;
-    // readonly ISerializer serializer;
-    //
-    //
+    readonly ISerializer serializer;
+
     // public SecureKeyValueStore(
     //     ILogger<SecureKeyValueStore> logger,
     //     AndroidPlatform platform, 
@@ -48,6 +44,7 @@ public class SecureKeyValueStore : IKeyValueStore
     public object? Get(Type type, string key)
     {
         // var result = type.GetDefaultValue();
+        object? result = null;
         var secureKey = SecureKey(key);
 
         if (this.settingsStore.Contains(secureKey))
@@ -59,7 +56,7 @@ public class SecureKeyValueStore : IKeyValueStore
                 try
                 {
                     var value = this.keyStore.Decrypt(data);
-                    // result = this.serializer.Deserialize(type, value);
+                    result = serializer.Deserialize(type, value);
                 }
                 catch (AEADBadTagException)
                 {
@@ -74,11 +71,11 @@ public class SecureKeyValueStore : IKeyValueStore
     public bool Remove(string key) => this.settingsStore.Remove(SecureKey(key));
     public void Set(string key, object value)
     {
-        // var content = this.serializer.Serialize(value);
-        // var data = this.keyStore.Encrypt(content);
-        // var encValue = Convert.ToBase64String(data);
-        // var secureKey = SecureKey(key);
-        // this.settingsStore.Set(secureKey, encValue);
+        var content = this.serializer.Serialize(value);
+        var data = this.keyStore.Encrypt(content);
+        var encValue = Convert.ToBase64String(data);
+        var secureKey = SecureKey(key);
+        this.settingsStore.Set(secureKey, encValue);
     }
 
     static string SecureKey(string key) => "sec-" + key;

@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
     
+    
     public static IServiceCollection AddScopedAsImplementedInterfaces<TImpl>(this IServiceCollection services)
         where TImpl : class
     {
@@ -35,6 +36,7 @@ public static class ServiceCollectionExtensions
         
         return services;
     }
+    
     
     public static IServiceCollection AddTransientAsImplementedInterfaces<TImpl>(this IServiceCollection services)
         where TImpl : class
@@ -67,8 +69,7 @@ public static class ServiceCollectionExtensions
     /// <returns></returns>
     public static IServiceCollection AddShinyService(this IServiceCollection services, Type implementationType)
     {
-        services.TryAddSingleton<IObjectStoreBinder, ObjectStoreBinder>();
-        services.TryAddSingleton<IKeyValueStoreFactory, KeyValueStoreFactory>();
+        services.AddShinyStores();
         services.AddSingleton(implementationType);
         
         var interfaces = implementationType

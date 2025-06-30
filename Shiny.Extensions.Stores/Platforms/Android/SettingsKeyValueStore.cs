@@ -1,6 +1,4 @@
-﻿using System;
-using Android.Content;
-using Shiny.Reflection;
+﻿using Android.Content;
 
 namespace Shiny.Extensions.Stores;
 

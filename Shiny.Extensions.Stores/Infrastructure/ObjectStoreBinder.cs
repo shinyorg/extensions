@@ -1,8 +1,6 @@
-﻿
+﻿using System.Reflection;
 
-using System.Reflection;
-
-namespace Shiny.Extensions.Stores.Impl;
+namespace Shiny.Extensions.Stores.Infrastructure;
 
 
 public class ObjectStoreBinder(
