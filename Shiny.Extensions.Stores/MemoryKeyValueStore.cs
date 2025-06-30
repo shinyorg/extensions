@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Shiny.Extensions.Stores.Impl;
+﻿namespace Shiny.Extensions.Stores;
 
 
 public class MemoryKeyValueStore : IKeyValueStore
