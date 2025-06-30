@@ -316,6 +316,7 @@ public class DependencyInjectionSourceGeneratorTests
         return TestHelper.Verify(source);
     }
 
+    
     static class TestHelper
     {
         public static Task Verify(string source)

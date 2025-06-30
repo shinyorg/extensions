@@ -1,0 +1,20 @@
+<Project>
+    <PropertyGroup>
+        <BaseTargetFramework>net9.0</BaseTargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PackageReadmeFile>readme.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="All"/>
+        <None Include="..\..\nuget.png" Pack="true" PackagePath="icon.png"/>
+        <None Include="..\..\readme.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+</Project>

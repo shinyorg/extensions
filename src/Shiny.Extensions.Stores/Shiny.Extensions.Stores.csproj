@@ -12,15 +12,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Shiny.Reflector" Version="1.5.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+        <PackageReference Include="Shiny.Reflector"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
     </ItemGroup>
-
-    <!--
-    <ItemGroup>
-        <PackageReference Include="Nerdbank.GitVersioning" Version="3.7.112" PrivateAssets="All" />
-    </ItemGroup>
-    -->
     
     <ItemGroup>
         <None Include="Platforms\**\*.cs" />

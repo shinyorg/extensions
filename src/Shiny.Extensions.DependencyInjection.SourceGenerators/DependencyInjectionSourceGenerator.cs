@@ -17,22 +17,23 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var classesWithServiceAttribute = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (s, _) => IsSyntaxTargetForGeneration(s),
-                transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
+                transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx)
+            )
             .Where(static m => m is not null)
             .Collect(); // Collect all results first
 
         // Combine with compilation for namespace resolution
         var compilationAndClasses = context.CompilationProvider.Combine(classesWithServiceAttribute);
 
-        context.RegisterSourceOutput(compilationAndClasses,
-            static (spc, source) => Execute(source.Left, source.Right, spc));
+        context.RegisterSourceOutput(
+            compilationAndClasses,
+            static (spc, source) => Execute(source.Left, source.Right, spc)
+        );
     }
 
-    static bool IsSyntaxTargetForGeneration(SyntaxNode node)
-    {
-        return node is ClassDeclarationSyntax classDeclaration &&
-               classDeclaration.AttributeLists.Count > 0;
-    }
+    static bool IsSyntaxTargetForGeneration(SyntaxNode node) => 
+        node is ClassDeclarationSyntax { AttributeLists.Count: > 0 };
+    
 
     static ServiceInfo? GetSemanticTargetForGeneration(GeneratorSyntaxContext context)
     {

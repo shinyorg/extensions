@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <PropertyGroup>
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <Description>Shiny Stores for .NET Web Assembly (Local and Session Storage)</Description>
+    </PropertyGroup>
+
+
+    <ItemGroup>
+        <SupportedPlatform Include="browser"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web"/>
+        <ProjectReference Include="..\Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj"/>
+    </ItemGroup>
+
+</Project>

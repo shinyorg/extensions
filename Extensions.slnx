@@ -8,12 +8,18 @@
     <File Path=".github\ISSUE_TEMPLATE\feature_request.yml" />
     <File Path=".github\workflows\build.yml" />
     <File Path="Build.slnf" />
+    <File Path="src\Directory.build.props" />
+    <File Path="src\Directory.packages.props" />
+    <File Path="readme.md" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj" Type="Classic C#" />
   </Folder>
   <Project Path="Sample\Sample.csproj" Type="Classic C#" />
-  <Project Path="Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" Type="Classic C#" />
-  <Project Path="Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" Type="Classic C#" />
-  <Project Path="Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" Type="Classic C#" />
-  <Project Path="Shiny.Extensions.Stores.Web\Shiny.Extensions.Stores.Web.csproj" Type="Classic C#" />
-  <Project Path="Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj" Type="Classic C#" />
-  <Project Path="Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj" Type="Classic C#" />
+  <Project Path="src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" Type="Classic C#" />
+  <Project Path="src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" Type="Classic C#" />
+  <Project Path="src\Shiny.Extensions.Stores.Web\Shiny.Extensions.Stores.Web.csproj" Type="Classic C#" />
+  <Project Path="src\Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj" Type="Classic C#" />
+  <Project Path="src\Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj" Type="Classic C#" />
 </Solution>
