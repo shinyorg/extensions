@@ -26,4 +26,12 @@ namespace Sample
 
     [Service(ServiceLifetime.Scoped)]
     public class ScopedMultipleImplementation : IStandardInterface, IStandardInterface2;
+
+
+    [Service(ServiceLifetime.Scoped, "KeyedGeneric")]
+    public class TestGeneric<T1, T2>
+    {
+        public T1 Value1 { get; set; }
+        public T2 Value2 { get; set; }
+    }
 }
