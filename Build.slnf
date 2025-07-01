@@ -2,11 +2,11 @@
     "solution": {
         "path": "extensions.slnx",
         "projects": [
-            "Shiny.Extensions.DependencyInjection.SourceGenerators\\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj",
-            "Shiny.Extensions.DependencyInjection\\Shiny.Extensions.DependencyInjection.csproj",
-            "Shiny.Extensions.Stores\\Shiny.Extensions.Stores.csproj",
-            "Shiny.Extensions.Stores.Web\\Shiny.Extensions.Stores.Web.csproj",
-            "Shiny.Extensions.WebHosting\\Shiny.Extensions.WebHosting.csproj"
+            "src\\Shiny.Extensions.DependencyInjection.SourceGenerators\\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj",
+            "src\\Shiny.Extensions.DependencyInjection\\Shiny.Extensions.DependencyInjection.csproj",
+            "src\\Shiny.Extensions.Stores\\Shiny.Extensions.Stores.csproj",
+            "src\\Shiny.Extensions.Stores.Web\\Shiny.Extensions.Stores.Web.csproj",
+            "src\\Shiny.Extensions.WebHosting\\Shiny.Extensions.WebHosting.csproj"
         ]
     }
 }

@@ -5,16 +5,14 @@ namespace Shiny.Extensions.Stores.Infrastructure;
 
 public class DefaultSerializer : ISerializer
 {
-    readonly JsonSerializerOptions serializeOptions = new();
+    public JsonSerializerOptions SerializerOptions { get; set; } = new();
 
 
     public T Deserialize<T>(string value) => (T)this.Deserialize(typeof(T), value);
     public object Deserialize(Type objectType, string value)
     {
-        var result = JsonSerializer.Deserialize(value, objectType, this.serializeOptions);
+        var result = JsonSerializer.Deserialize(value, objectType, this.SerializerOptions);
         return result!;
     }
-
-
-    public string Serialize(object value) => JsonSerializer.Serialize(value, this.serializeOptions);
+    public string Serialize(object value) => JsonSerializer.Serialize(value, this.SerializerOptions);
 }
