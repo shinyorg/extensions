@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Shiny.Extensions.DependencyInjection;
@@ -51,4 +50,15 @@ public static class ServiceProviderExtensions
     /// <returns></returns>
     public static Lazy<T> GetLazyService<T>(this IServiceProvider services, bool required = false)
         => new(() => required ? services.GetRequiredService<T>() : services.GetService<T>());
+    
+    /// <summary>
+    /// Runs any registered startup tasks
+    /// </summary>
+    /// <param name="services"></param>
+    public static void RunStartupTasks(this IServiceProvider services)
+    {
+        var startupTasks = services.GetServices<IShinyStartupTask>();
+        foreach (var task in startupTasks)
+            task.Start();
+    }
 }
