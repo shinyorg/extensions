@@ -7,10 +7,9 @@ namespace Shiny.Extensions.Stores;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddShinyStores(
-        this IServiceCollection services
-    )
+    public static IServiceCollection AddShinyStores(this IServiceCollection services)
     {
+        services.TryAddSingleton<IKeyValueStoreFactory, KeyValueStoreFactory>();
         services.TryAddSingleton<ISerializer, DefaultSerializer>();
         services.TryAddSingleton<IObjectStoreBinder, ObjectStoreBinder>();
         
