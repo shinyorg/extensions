@@ -1,12 +1,12 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using System.Collections.Immutable;
 using System.Text;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace Shiny.Extensions.DependencyInjection.SourceGenerators;
+
 
 [Generator(LanguageNames.CSharp)]
 public class DependencyInjectionSourceGenerator : IIncrementalGenerator
@@ -22,12 +22,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             .Where(static m => m is not null)
             .Collect(); // Collect all results first
 
-        // Combine with compilation for namespace resolution
-        var compilationAndClasses = context.CompilationProvider.Combine(classesWithServiceAttribute);
+        // Get analyzer config options for MSBuild properties
+        var configOptions = context.AnalyzerConfigOptionsProvider;
+
+        // Combine with compilation and config options for namespace resolution
+        var compilationAndClassesAndConfig = context.CompilationProvider
+            .Combine(classesWithServiceAttribute)
+            .Combine(configOptions);
 
         context.RegisterSourceOutput(
-            compilationAndClasses,
-            static (spc, source) => Execute(source.Left, source.Right, spc)
+            compilationAndClassesAndConfig,
+            static (spc, source) => Execute(source.Left.Left, source.Left.Right, source.Right, spc)
         );
     }
 
@@ -126,7 +131,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         };
     }
 
-    static void Execute(Compilation compilation, ImmutableArray<ServiceInfo?> services, SourceProductionContext context)
+    static void Execute(Compilation compilation, ImmutableArray<ServiceInfo?> services, AnalyzerConfigOptionsProvider configOptions, SourceProductionContext context)
     {
         if (services.IsDefaultOrEmpty)
             return;
@@ -141,39 +146,59 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             .Select(g => g.First())
             .ToList();
 
-        // Group services by namespace and generate a single file for each namespace
-        var servicesByNamespace = uniqueServices.GroupBy(s => s.Namespace);
-
-        foreach (var namespaceGroup in servicesByNamespace)
-        {
-            var targetNamespace = GetTargetNamespace(compilation, namespaceGroup.Key);
-            var servicesList = namespaceGroup.ToList();
-            
-            // Only generate if we have services for this namespace
-            if (servicesList.Count > 0)
-            {
-                var source = GenerateRegistrationCode(targetNamespace, servicesList);
-                
-                // Use a deterministic, unique filename per namespace
-                var safeNamespace = string.IsNullOrEmpty(targetNamespace) || targetNamespace == "<global namespace>" 
-                    ? "Global" 
-                    : targetNamespace.Replace(".", "_").Replace("<", "_").Replace(">", "_");
-                var fileName = $"GeneratedRegistrations_{safeNamespace}.g.cs";
-                context.AddSource(fileName, source);
-            }
-        }
+        // Generate a single extension class for all types in the assembly
+        var targetNamespace = GetTargetNamespace(compilation, configOptions);
+        var extensionMethodName = GetExtensionMethodName(configOptions);
+        var source = GenerateRegistrationCode(targetNamespace, uniqueServices, extensionMethodName);
+        
+        var fileName = "GeneratedRegistrations.g.cs";
+        context.AddSource(fileName, source);
     }
 
-    static string GetTargetNamespace(Compilation compilation, string defaultNamespace)
+    static string GetExtensionMethodName(AnalyzerConfigOptionsProvider configOptions)
     {
-        // Look for ShinyExtensionsDependencyInjectionNamespace in project properties
-        // For now, just use the default namespace from the services
-        // In a real implementation, you'd parse the MSBuild properties
-        _ = compilation; // Suppress unused parameter warning
-        return defaultNamespace;
+        var globalOptions = configOptions.GlobalOptions;
+        
+        // Check for ShinyDIExtensionMethodName property
+        if (globalOptions.TryGetValue("build_property.ShinyDIExtensionMethodName", out var methodName) && 
+            !string.IsNullOrEmpty(methodName))
+        {
+            return methodName;
+        }
+
+        // Fallback to default name
+        return "AddGeneratedServices";
     }
 
-    static string GenerateRegistrationCode(string namespaceName, List<ServiceInfo> services)
+    static string GetTargetNamespace(Compilation compilation, AnalyzerConfigOptionsProvider configOptions)
+    {
+        // Try to get ShinyDIExtensionNamespace from MSBuild properties via analyzer config
+        var globalOptions = configOptions.GlobalOptions;
+        
+        // Check for ShinyDIExtensionNamespace property
+        if (globalOptions.TryGetValue("build_property.ShinyDIExtensionNamespace", out var shinyDINamespace) && 
+            !string.IsNullOrEmpty(shinyDINamespace))
+        {
+            return shinyDINamespace;
+        }
+
+        // Fallback to RootNamespace property
+        if (globalOptions.TryGetValue("build_property.RootNamespace", out var rootNamespace) && 
+            !string.IsNullOrEmpty(rootNamespace))
+        {
+            return rootNamespace;
+        }
+
+        // Fallback to assembly name
+        var assemblyName = compilation.AssemblyName;
+        if (!string.IsNullOrEmpty(assemblyName))
+            return assemblyName;
+
+        // Final fallback
+        return "Generated";
+    }
+
+    static string GenerateRegistrationCode(string namespaceName, List<ServiceInfo> services, string extensionMethodName)
     {
         var sb = new StringBuilder();
         
@@ -193,7 +218,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         // Use a consistent class name
         sb.AppendLine($"    public static class __GeneratedRegistrations");
         sb.AppendLine("    {");
-        sb.AppendLine("        public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedServices(");
+        sb.AppendLine($"        public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection {extensionMethodName}(");
         sb.AppendLine("            this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services");
         sb.AppendLine("        )");
         sb.AppendLine("        {");

@@ -1,10 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Shiny.Extensions.DependencyInjection.SourceGenerators;
-using System.IO;
-using System.Collections.Generic;
 
 namespace Shiny.Extensions.DependencyInjection.Tests;
+
 
 public class DependencyInjectionSourceGeneratorTests
 {
@@ -316,10 +316,200 @@ public class DependencyInjectionSourceGeneratorTests
         return TestHelper.Verify(source);
     }
 
-    
+    [Fact]
+    public Task GeneratesWithCustomExtensionMethodName()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public class MyService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIExtensionMethodName"] = "AddMyCustomServices"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
+    [Fact]
+    public Task GeneratesWithCustomNamespace()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public class MyService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIExtensionNamespace"] = "CustomExtensions"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
+    [Fact]
+    public Task GeneratesWithRootNamespaceFallback()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public class MyService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.RootNamespace"] = "MyApp.Extensions"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
+    [Fact]
+    public Task GeneratesWithBothCustomNamespaceAndMethodName()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public class MyService
+                {
+                }
+
+                [Service(ServiceLifetime.Transient)]
+                public class AnotherService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIExtensionNamespace"] = "MyCompany.DI.Extensions",
+            ["build_property.ShinyDIExtensionMethodName"] = "RegisterAllServices"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
+    [Fact]
+    public Task GeneratesWithNamespacePriorityOrder()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public class MyService
+                {
+                }
+            }
+            """;
+
+        // ShinyDIExtensionNamespace should take priority over RootNamespace
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIExtensionNamespace"] = "HighPriority.Extensions",
+            ["build_property.RootNamespace"] = "LowPriority.Extensions"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
+    [Fact]
+    public Task GeneratesWithAssemblyNameFallback()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public class MyService
+                {
+                }
+            }
+            """;
+
+        // No MSBuild properties provided, should fallback to assembly name
+        return TestHelper.Verify(source, assemblyName: "MyCustomAssembly");
+    }
+
+    [Fact]
+    public Task GeneratesSingleExtensionClassForAllServices()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace FirstNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public class FirstService
+                {
+                }
+            }
+
+            namespace SecondNamespace
+            {
+                [Service(ServiceLifetime.Transient)]
+                public class SecondService
+                {
+                }
+            }
+
+            namespace ThirdNamespace
+            {
+                public interface IThirdService { }
+
+                [Service(ServiceLifetime.Scoped)]
+                public class ThirdService : IThirdService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIExtensionNamespace"] = "AllServices.Extensions",
+            ["build_property.ShinyDIExtensionMethodName"] = "AddAllAssemblyServices"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
     static class TestHelper
     {
-        public static Task Verify(string source)
+        public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)
         {
             // Parse the test source
             var syntaxTree = CSharpSyntaxTree.ParseText(source);
@@ -360,7 +550,7 @@ public class DependencyInjectionSourceGeneratorTests
 
             // Create the compilation
             var compilation = CSharpCompilation.Create(
-                assemblyName: "Tests",
+                assemblyName: assemblyName ?? "Tests",
                 syntaxTrees: [syntaxTree],
                 references: references,
                 options: new CSharpCompilationOptions(
@@ -382,15 +572,52 @@ public class DependencyInjectionSourceGeneratorTests
             // Create the source generator
             var generator = new DependencyInjectionSourceGenerator();
 
-            // Generate the sources
             var driver = CSharpGeneratorDriver.Create(generator);
+        
+            // Add analyzer config options if provided
+            if (msBuildProperties is { Count: >0 })
+            {
+                var optionsProvider = new TestAnalyzerConfigOptionsProvider(msBuildProperties);
+                driver = (CSharpGeneratorDriver)driver.WithUpdatedAnalyzerConfigOptions(optionsProvider);
+            }
             var result = driver.RunGenerators(compilation);
             var runResult = result.GetRunResult();
             
-            // Return the verification using Verify framework
             return Verifier
                 .Verify(runResult)
                 .UseDirectory("Snapshots");
+        }
+    }
+
+    // Test implementation of AnalyzerConfigOptionsProvider for MSBuild properties
+    internal class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+    {
+        private readonly Dictionary<string, string> _globalOptions;
+
+        public TestAnalyzerConfigOptionsProvider(Dictionary<string, string> globalOptions)
+        {
+            _globalOptions = globalOptions;
+        }
+
+        public override AnalyzerConfigOptions GlobalOptions => new TestAnalyzerConfigOptions(_globalOptions);
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => new TestAnalyzerConfigOptions(new Dictionary<string, string>());
+
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => new TestAnalyzerConfigOptions(new Dictionary<string, string>());
+    }
+
+    internal class TestAnalyzerConfigOptions : AnalyzerConfigOptions
+    {
+        private readonly Dictionary<string, string> _options;
+
+        public TestAnalyzerConfigOptions(Dictionary<string, string> options)
+        {
+            _options = options;
+        }
+
+        public override bool TryGetValue(string key, out string value)
+        {
+            return _options.TryGetValue(key, out value!);
         }
     }
 }
