@@ -11,12 +11,12 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingleton<ImplementationOnly>();
-            services.AddKeyedTransient<KeyedImplementationOnly>("ImplOnly");
-            services.AddSingleton<Sample.IStandardInterface, StandardImplementation>();
-            services.AddKeyedScoped<Sample.IStandardInterface, KeyedStandardImplementation>("Standard");
-            services.AddSingletonAsImplementedInterfaces<MultipleImplementation>();
-            services.AddScopedAsImplementedInterfaces<ScopedMultipleImplementation>();
+            services.AddSingleton<global::Sample.ImplementationOnly>();
+            services.AddKeyedTransient<global::Sample.KeyedImplementationOnly>("ImplOnly");
+            services.AddSingleton<global::Sample.IStandardInterface, global::Sample.StandardImplementation>();
+            services.AddKeyedScoped<global::Sample.IStandardInterface, global::Sample.KeyedStandardImplementation>("Standard");
+            services.AddSingletonAsImplementedInterfaces<global::Sample.MultipleImplementation>();
+            services.AddScopedAsImplementedInterfaces<global::Sample.ScopedMultipleImplementation>();
 
             return services;
         }

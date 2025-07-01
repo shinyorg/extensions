@@ -11,9 +11,9 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingleton<TestNamespace.IService1, Service1>();
-            services.AddKeyedTransient<KeyedService1>("Key1");
-            services.AddScopedAsImplementedInterfaces<Service2>();
+            services.AddSingleton<global::TestNamespace.IService1, global::TestNamespace.Service1>();
+            services.AddKeyedTransient<global::TestNamespace.KeyedService1>("Key1");
+            services.AddScopedAsImplementedInterfaces<global::TestNamespace.Service2>();
 
             return services;
         }

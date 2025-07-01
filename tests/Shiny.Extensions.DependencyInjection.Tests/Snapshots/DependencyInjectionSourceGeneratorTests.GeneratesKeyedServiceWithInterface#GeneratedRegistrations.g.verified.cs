@@ -11,7 +11,7 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddKeyedScoped<TestNamespace.IMyService, MyKeyedService>("MyKey");
+            services.AddKeyedScoped<global::TestNamespace.IMyService, global::TestNamespace.MyKeyedService>("MyKey");
 
             return services;
         }

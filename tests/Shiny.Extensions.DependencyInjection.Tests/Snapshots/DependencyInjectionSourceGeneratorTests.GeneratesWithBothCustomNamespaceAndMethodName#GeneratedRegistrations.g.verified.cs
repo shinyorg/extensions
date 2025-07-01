@@ -11,8 +11,8 @@ namespace MyCompany.DI.Extensions
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingleton<MyService>();
-            services.AddTransient<AnotherService>();
+            services.AddSingleton<global::TestNamespace.MyService>();
+            services.AddTransient<global::TestNamespace.AnotherService>();
 
             return services;
         }

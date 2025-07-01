@@ -11,8 +11,8 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingleton<Service1>();
-            services.AddScoped<Namespace2.IService2, Service2>();
+            services.AddSingleton<global::Namespace1.Service1>();
+            services.AddScoped<global::Namespace2.IService2, global::Namespace2.Service2>();
 
             return services;
         }

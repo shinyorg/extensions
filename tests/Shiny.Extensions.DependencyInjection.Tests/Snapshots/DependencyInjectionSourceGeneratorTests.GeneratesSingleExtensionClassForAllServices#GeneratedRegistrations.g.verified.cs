@@ -11,9 +11,9 @@ namespace AllServices.Extensions
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingleton<FirstService>();
-            services.AddTransient<SecondService>();
-            services.AddScoped<ThirdNamespace.IThirdService, ThirdService>();
+            services.AddSingleton<global::FirstNamespace.FirstService>();
+            services.AddTransient<global::SecondNamespace.SecondService>();
+            services.AddScoped<global::ThirdNamespace.IThirdService, global::ThirdNamespace.ThirdService>();
 
             return services;
         }

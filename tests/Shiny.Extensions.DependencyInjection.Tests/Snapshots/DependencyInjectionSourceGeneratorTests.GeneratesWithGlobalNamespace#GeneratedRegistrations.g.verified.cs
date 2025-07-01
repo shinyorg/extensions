@@ -11,7 +11,7 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingleton<GlobalService>();
+            services.AddSingleton<global::GlobalService>();
 
             return services;
         }

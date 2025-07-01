@@ -11,7 +11,7 @@ namespace MyCustomAssembly
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingleton<MyService>();
+            services.AddSingleton<global::TestNamespace.MyService>();
 
             return services;
         }

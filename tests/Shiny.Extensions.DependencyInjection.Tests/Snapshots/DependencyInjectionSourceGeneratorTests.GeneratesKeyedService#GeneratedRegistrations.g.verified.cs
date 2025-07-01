@@ -11,7 +11,7 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddKeyedSingleton<MyKeyedService>("MyKey");
+            services.AddKeyedSingleton<global::TestNamespace.MyKeyedService>("MyKey");
 
             return services;
         }

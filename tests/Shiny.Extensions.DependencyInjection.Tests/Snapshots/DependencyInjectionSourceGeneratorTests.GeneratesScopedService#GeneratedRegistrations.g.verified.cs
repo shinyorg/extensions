@@ -11,7 +11,7 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddScoped<MyScopedService>();
+            services.AddScoped<global::TestNamespace.MyScopedService>();
 
             return services;
         }

@@ -256,17 +256,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             if (service.Interfaces.Count == 0)
             {
                 // Implementation only
-                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<{service.ClassName}>(\"{service.KeyedName}\");");
+                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
             }
             else if (service.Interfaces.Count == 1)
             {
                 // Single interface
-                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<{service.Interfaces[0]}, {service.ClassName}>(\"{service.KeyedName}\");");
+                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
             }
             else
             {
                 // Multiple interfaces - no keyed equivalent, so register as implementation only
-                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<{service.ClassName}>(\"{service.KeyedName}\");");
+                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
             }
         }
         else
@@ -275,17 +275,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             if (service.Interfaces.Count == 0)
             {
                 // Implementation only
-                sb.AppendLine($"            services.Add{lifetimeMethod}<{service.ClassName}>();");
+                sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.FullClassName}>();");
             }
             else if (service.Interfaces.Count == 1)
             {
                 // Single interface
-                sb.AppendLine($"            services.Add{lifetimeMethod}<{service.Interfaces[0]}, {service.ClassName}>();");
+                sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
             }
             else
             {
                 // Multiple interfaces
-                sb.AppendLine($"            services.Add{lifetimeMethod}AsImplementedInterfaces<{service.ClassName}>();");
+                sb.AppendLine($"            services.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>();");
             }
         }
     }

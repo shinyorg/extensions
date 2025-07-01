@@ -11,7 +11,7 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddTransient<MyTransientService>();
+            services.AddTransient<global::TestNamespace.MyTransientService>();
 
             return services;
         }

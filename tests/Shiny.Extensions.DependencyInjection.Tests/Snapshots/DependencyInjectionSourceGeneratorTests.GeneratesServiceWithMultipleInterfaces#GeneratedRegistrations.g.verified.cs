@@ -11,7 +11,7 @@ namespace Tests
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
         )
         {
-            services.AddSingletonAsImplementedInterfaces<MyService>();
+            services.AddSingletonAsImplementedInterfaces<global::TestNamespace.MyService>();
 
             return services;
         }
