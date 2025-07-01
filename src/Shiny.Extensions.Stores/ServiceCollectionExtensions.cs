@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
     ///  This will add the implementation for ALL of its interfaces and create a persistent storage binding if INotifyPropertyChanged is implemented
     /// </summary>
     /// <param name="services"></param>
+    /// <param name="keyValueAlias">(optional) allows you to set the store to bind to</param>
     /// <typeparam name="TImpl"></typeparam>
     /// <returns></returns>
     public static IServiceCollection AddPersistentService<TImpl>(this IServiceCollection services, string? keyValueAlias = null) where TImpl : class, INotifyPropertyChanged
@@ -39,6 +40,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="implementationType"></param>
     /// <param name="services"></param>
+    /// <param name="keyValueAlias">(optional) allows you to set the store to bind to</param>
     /// <returns></returns>
     public static IServiceCollection AddPersistentService(this IServiceCollection services, Type implementationType, string? keyValueAlias = null)
     {

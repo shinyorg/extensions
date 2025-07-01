@@ -5,6 +5,12 @@ namespace Shiny.Extensions.Stores.Infrastructure;
 
 public class DefaultSerializer : ISerializer
 {
+    // [JsonSourceGenerationOptions(UseStringEnumConverter = true)]
+    // source gen considerations
+    // var options = new JsonSerializerOptions
+    // {
+    //     TypeInfoResolver = JsonTypeInfoResolver.Combine(ContextA.Default, ContextB.Default, ContextC.Default);
+    // };
     public JsonSerializerOptions SerializerOptions { get; set; } = new();
 
 
