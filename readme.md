@@ -17,3 +17,7 @@
 ## Web Hosting Extensions
 * Merges service container build and post build scenarios into a single class
 * All IInfrastructureModule implementations are automatically detected and run
+
+
+## Additional Libraries Used
+* [Shiny Reflector](https://github.com/shinyorg/reflector) - Reflection without the actual reflection
