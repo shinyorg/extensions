@@ -2,7 +2,8 @@
 
     <PropertyGroup>
         <TargetFramework>$(BaseTargetFramework)</TargetFramework>
-        <Description>Shiny Stores for .NET Web Assembly (Local and Session Storage)</Description>
+        <Description>Store anything in a key/value store - Stores for .NET Web Assembly (Local and Session Storage)</Description>
+        <PackageTags>shiny keyvaluepair stores storage sourcegeneration</PackageTags>
     </PropertyGroup>
 
 

@@ -6,6 +6,9 @@
         <PackageReadmeFile>readme.md</PackageReadmeFile>
         <PackageIcon>icon.png</PackageIcon>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/shinyorg/extensions</RepositoryUrl>
+        <PackageProjectUrl>https://shinylib.net</PackageProjectUrl>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">

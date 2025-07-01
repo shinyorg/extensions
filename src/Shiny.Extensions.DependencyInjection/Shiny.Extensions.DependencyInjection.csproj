@@ -2,6 +2,8 @@
 
     <PropertyGroup>
         <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <Description>Utilities for Microsoft.Extensions.DependencyInjection as well as source generation to remove some boilerplating</Description>
+        <PackageTags>shiny dependencyinjection di dependency sourcegeneration</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

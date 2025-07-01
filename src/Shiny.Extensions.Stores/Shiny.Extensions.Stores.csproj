@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <Description>Store anything in a key/value store - Abstractions for iOS, Android and Windows preferences/secure storage</Description>
         <BaseTfm>net9.0</BaseTfm>
         <TargetFrameworks>$(BaseTfm)</TargetFrameworks>
         <TargetFrameworks>$(TargetFrameworks);$(BaseTfm)-android</TargetFrameworks>
@@ -9,6 +10,8 @@
         <TargetFrameworks Condition="'$(OS)' == 'Windows'">$(TargetFrameworks);net9.0-windows</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <Description>Store anything in a key/value store - Abstractions for iOS, Android and Windows preferences/secure storage</Description>
+        <PackageTags>shiny keyvaluepair stores storage sourcegeneration</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
