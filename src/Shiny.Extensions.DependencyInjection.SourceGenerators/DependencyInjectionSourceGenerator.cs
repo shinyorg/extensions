@@ -120,6 +120,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var interfaces = classSymbol.Interfaces.Select(i => i.ToDisplayString()).ToList();
         var namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
 
+        // Check if this is an open generic type (has type parameters)
+        var isOpenGeneric = classSymbol.IsGenericType;
+        var genericArity = isOpenGeneric ? classSymbol.Arity : 0;
+        
         return new ServiceInfo
         {
             ClassName = classSymbol.Name,
@@ -127,7 +131,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             Namespace = namespaceName,
             Lifetime = lifetime,
             KeyedName = keyedName,
-            Interfaces = interfaces
+            Interfaces = interfaces,
+            IsOpenGeneric = isOpenGeneric,
+            GenericArity = genericArity
         };
     }
 
@@ -250,44 +256,135 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             _ => "Singleton"
         };
 
-        if (service.KeyedName != null)
+        if (service.IsOpenGeneric)
         {
-            // Keyed registration
-            if (service.Interfaces.Count == 0)
+            // Convert full generic type names to open generic syntax for typeof()
+            var openGenericClassName = ConvertToOpenGenericSyntax(service.FullClassName, service.GenericArity);
+            var openGenericInterfaces = service.Interfaces.Select(i => ConvertToOpenGenericSyntax(i, GetGenericArityFromTypeName(i))).ToList();
+
+            // Open generic registration using typeof()
+            if (service.KeyedName != null)
             {
-                // Implementation only
-                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
-            }
-            else if (service.Interfaces.Count == 1)
-            {
-                // Single interface
-                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                // Keyed open generic registration
+                if (service.Interfaces.Count == 0)
+                {
+                    // Implementation only
+                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                }
+                else if (service.Interfaces.Count == 1)
+                {
+                    // Single interface
+                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                }
+                else
+                {
+                    // Multiple interfaces - register as implementation only for keyed services
+                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                }
             }
             else
             {
-                // Multiple interfaces - no keyed equivalent, so register as implementation only
-                sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                // Non-keyed open generic registration
+                if (service.Interfaces.Count == 0)
+                {
+                    // Implementation only
+                    sb.AppendLine($"            services.Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
+                }
+                else if (service.Interfaces.Count == 1)
+                {
+                    // Single interface
+                    sb.AppendLine($"            services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
+                }
+                else
+                {
+                    // Multiple interfaces - register for each interface
+                    for (int i = 0; i < service.Interfaces.Count; i++)
+                    {
+                        sb.AppendLine($"            services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
+                    }
+                }
             }
         }
         else
         {
-            // Non-keyed registration
-            if (service.Interfaces.Count == 0)
+            // Closed type registration (existing logic)
+            if (service.KeyedName != null)
             {
-                // Implementation only
-                sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.FullClassName}>();");
-            }
-            else if (service.Interfaces.Count == 1)
-            {
-                // Single interface
-                sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
+                // Keyed registration
+                if (service.Interfaces.Count == 0)
+                {
+                    // Implementation only
+                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                }
+                else if (service.Interfaces.Count == 1)
+                {
+                    // Single interface
+                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                }
+                else
+                {
+                    // Multiple interfaces - no keyed equivalent, so register as implementation only
+                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                }
             }
             else
             {
-                // Multiple interfaces
-                sb.AppendLine($"            services.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>();");
+                // Non-keyed registration
+                if (service.Interfaces.Count == 0)
+                {
+                    // Implementation only
+                    sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.FullClassName}>();");
+                }
+                else if (service.Interfaces.Count == 1)
+                {
+                    // Single interface
+                    sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
+                }
+                else
+                {
+                    // Multiple interfaces
+                    sb.AppendLine($"            services.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>();");
+                }
             }
         }
+    }
+
+    static string ConvertToOpenGenericSyntax(string fullTypeName, int genericArity)
+    {
+        if (genericArity <= 0)
+            return fullTypeName;
+
+        // Find the last occurrence of < to handle nested generic types correctly
+        var lastAngleBracketIndex = fullTypeName.LastIndexOf('<');
+        if (lastAngleBracketIndex == -1)
+            return fullTypeName;
+
+        var baseTypeName = fullTypeName.Substring(0, lastAngleBracketIndex);
+        
+        // Create the open generic syntax with the right number of commas
+        var commas = genericArity > 1 ? new string(',', genericArity - 1) : "";
+        return $"{baseTypeName}<{commas}>";
+    }
+
+    static int GetGenericArityFromTypeName(string typeName)
+    {
+        // Count the number of type parameters by counting commas + 1 within the generic brackets
+        var lastAngleBracketIndex = typeName.LastIndexOf('<');
+        if (lastAngleBracketIndex == -1)
+            return 0;
+
+        var closingBracketIndex = typeName.LastIndexOf('>');
+        if (closingBracketIndex <= lastAngleBracketIndex)
+            return 0;
+
+        var genericPart = typeName.Substring(lastAngleBracketIndex + 1, closingBracketIndex - lastAngleBracketIndex - 1);
+        
+        if (string.IsNullOrWhiteSpace(genericPart))
+            return 0;
+
+        // Count commas and add 1 to get the number of type parameters
+        var commaCount = genericPart.Count(c => c == ',');
+        return commaCount + 1;
     }
 }
 
@@ -299,4 +396,6 @@ class ServiceInfo
     public string Lifetime { get; set; } = string.Empty;
     public string? KeyedName { get; set; }
     public List<string> Interfaces { get; set; } = [];
+    public bool IsOpenGeneric { get; set; } = false;
+    public int GenericArity { get; set; } = 0;
 }
