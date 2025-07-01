@@ -1,4 +1,9 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <ItemGroup Condition=" '$(ImplicitUsings)' == 'true' OR '$(ImplicitUsings)' == 'enable' ">
+        <Using Include="Shiny.Extensions.DependencyInjection" />
+        <Using Include="Microsoft.Extensions.DependencyInjection" />
+    </ItemGroup>
+    
     <ItemGroup>
         <CompilerVisibleProperty Include="ShinyDIExtensionMethodName" />
         <CompilerVisibleProperty Include="RootNamespace" />
