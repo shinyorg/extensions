@@ -7,6 +7,7 @@
 * Extension methods for startup tasks (different to hosted services that don't work on mobile)
 * Supports multiple interfaces
 * Supports open generics
+* Supports keyed services
 
 THIS:
 ```csharp

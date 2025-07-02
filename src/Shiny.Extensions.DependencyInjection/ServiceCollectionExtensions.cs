@@ -5,46 +5,63 @@ namespace Shiny.Extensions.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {
-    // TODO: add keyed versions
-    public static IServiceCollection AddSingletonAsImplementedInterfaces<TImpl>(this IServiceCollection services)
+    // TODO: can below handle open generics somehow?
+    
+    /// <summary>
+    /// This method registers a singleton service for the specified implementation type against all of the interfaces it implements.
+    /// All instances returned will be the same instance for all interfaces
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="keyName">(optional) Registers all interfaces with keyname as well</param>
+    /// <typeparam name="TImpl"></typeparam>
+    /// <returns></returns>
+    public static IServiceCollection AddSingletonAsImplementedInterfaces<TImpl>(this IServiceCollection services, string? keyName = null)
         where TImpl : class
     {
-        var implementationType = typeof(TImpl);
-        var interfaces = implementationType.GetInterfaces();
-        
+        if (keyName == null)
+            services.AddSingleton<TImpl>();
+        else
+            services.AddKeyedSingleton(keyName, typeof(TImpl));
+            
+        var interfaces = typeof(TImpl)
+            .GetInterfaces()
+            .Where(x => x != typeof(IDisposable));
+
         foreach (var interfaceType in interfaces)
         {
-            services.AddSingleton(interfaceType, implementationType);
+            if (keyName == null)
+                services.AddSingleton(interfaceType, sp => sp.GetRequiredService<TImpl>());
+            else
+                services.AddKeyedScoped(interfaceType, keyName, (sp, _) => sp.GetRequiredService<TImpl>());
         }
-        
+
         return services;
     }
     
     
-    public static IServiceCollection AddScopedAsImplementedInterfaces<TImpl>(this IServiceCollection services)
+    /// <summary>
+    /// This method registers a scoped service for the specified implementation type against all of the interfaces it implements.
+    /// All instances returned will be the same instance for all interfaces within the same lifecycle scope
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="keyName">(optional) Registers all interfaces with keyname as well</param>
+    /// <typeparam name="TImpl"></typeparam>
+    /// <returns></returns>
+    public static IServiceCollection AddScopedAsImplementedInterfaces<TImpl>(this IServiceCollection services, string? keyName = null)
         where TImpl : class
     {
+        services.AddScoped<TImpl>();
         var implementationType = typeof(TImpl);
-        var interfaces = implementationType.GetInterfaces();
-        
+        var interfaces = implementationType
+            .GetInterfaces()
+            .Where(x => x != typeof(IDisposable));
+
         foreach (var interfaceType in interfaces)
         {
-            services.AddScoped(interfaceType, implementationType);
-        }
-        
-        return services;
-    }
-    
-    
-    public static IServiceCollection AddTransientAsImplementedInterfaces<TImpl>(this IServiceCollection services)
-        where TImpl : class
-    {
-        var implementationType = typeof(TImpl);
-        var interfaces = implementationType.GetInterfaces();
-        
-        foreach (var interfaceType in interfaces)
-        {
-            services.AddTransient(interfaceType, implementationType);
+            if (keyName == null)
+                services.AddSingleton(interfaceType, sp => sp.GetRequiredService<TImpl>());
+            else
+                services.AddKeyedScoped(interfaceType, keyName, (sp, _) => sp.GetRequiredService<TImpl>());
         }
         
         return services;
