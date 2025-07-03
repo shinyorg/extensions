@@ -108,6 +108,7 @@ namespace Sample
   builder.Services.AddPersistentService<MyNotifyPropertyChangedObject>("secure"); // optional: default to `settings`
   ```
 3. Inject the MyNotifyPropertyChangedObject into your view model or service.  Set properties and they will be persisted automatically.
+4. To bypass reflection and make binding super fast - use [Shiny Reflector](https://github.com/shinyorg/reflector) to remove the need for reflection.  It is already built into the Shiny.Extensions.Stores package, so you can use it directly.  Just mark `[Reflector]` on your class and make your class partial.
 
 ### Available Stores Per Platform
 
@@ -121,7 +122,7 @@ namespace Sample
 | WebAssembly  | session     | Session Storage                     |
 | All          | Memory      | In Memory store - great for testing |
 
-> [NOTE!]
+> [!NOTE]
 > For WebAssembly, install the `Shiny.Extensions.Stores.Web` package and add `services.AddWebAssemblyStores()` to your service collection.
 
 ## Web Hosting Extensions
