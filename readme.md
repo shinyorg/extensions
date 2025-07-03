@@ -9,6 +9,8 @@
 * Supports open generics
 * Supports keyed services
 
+### The Results
+
 THIS:
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -78,6 +80,16 @@ namespace Sample
 }
 ```
 
+### Setup
+
+1. Install the NuGet package `Shiny.Extensions.DependencyInjection`
+2. Add the following using directive:
+   ```csharp
+   // during your app startup - use your service collection 
+   builder.Services.AddGeneratedServices();
+   ```
+3. Add the `[Service(ServiceLifetime.Singleton, "optional key")]` attribute to your classes and specify the lifetime and optional key
+
 ## Stores
 * Key/value store with support for
   * Android/iOS/Windows - Preferences & Secure Storage
@@ -86,9 +98,67 @@ namespace Sample
 * Object binder binds INotifyPropertyChanged against a key/value store to persist object changes across sessions
 * Simply implement IKeyValueStore to create your own store
 
+### Setup
+
+1. Install the NuGet package `Shiny.Extensions.Stores`
+2. Add the following using directive:
+  ```csharp
+  // during your app startup - use your service collection 
+  
+  builder.Services.AddPersistentService<MyNotifyPropertyChangedObject>("secure"); // optional: default to `settings`
+  ```
+3. Inject the MyNotifyPropertyChangedObject into your view model or service.  Set properties and they will be persisted automatically.
+
+### Available Stores Per Platform
+
+| Platform     | Store Alias | Description                         |
+|--------------|-------------|-------------------------------------|
+| Android      | settings    | Preferences store                   |
+| Android      | secure      | Secure Storage                      |
+| iOS          | settings    | Preferences store                   |
+| iOS          | secure      | Secure Storage                      |
+| WebAssembly  | settings    | Local Storage                       |
+| WebAssembly  | session     | Session Storage                     |
+| All          | Memory      | In Memory store - great for testing |
+
+> [NOTE!]
+> For WebAssembly, install the `Shiny.Extensions.Stores.Web` package and add `services.AddWebAssemblyStores()` to your service collection.
+
 ## Web Hosting Extensions
 * Merges service container build and post build scenarios into a single class
 * All IInfrastructureModule implementations are automatically detected and run
+
+### Setup
+1. Install the NuGet package `Shiny.Extensions.WebHosting`
+2. Add an infrastructure module by implementing `IInfrastructureModule`:
+   ```csharp
+   using Shiny.Extensions.WebHosting;
+
+   public class MyInfrastructureModule : IInfrastructureModule
+   {
+       public void Add(WebApplicationBuilder builder)
+       {
+           // Register your services here
+       }
+
+       public void Configure(WebApplication app)
+       {
+           // Configure your application here
+       }
+   }
+   ```
+3. In your application hosting startup, add the following:
+   ```csharp
+   using Shiny.Extensions.WebHosting;
+
+   var builder = WebApplication.CreateBuilder(args);
+   builder.AddInfrastructure(params Assembly[] assemblies)(); // this scans the assemblies for IInfrastructureModule implementations and runs Add methods
+   // OR
+   builder.AddInfrastructureModules(params IInfrastructureModule[] modules); // this doesn't use reflection
+   
+   var app = builder.Build();
+   app.UseInfrastructure(); // this runs all IInfrastructureModule.Use methods
+   ```
 
 
 ## Additional Libraries Used

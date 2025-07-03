@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,9 +39,7 @@ public static class RegistrationExtensions
             var moduleTypes = assembly
                 .GetTypes()
                 .Where(x =>
-                    x.IsPublic &&
-                    x.IsClass &&
-                    !x.IsAbstract &&
+                    x is { IsPublic: true, IsClass: true, IsAbstract: false } &&
                     x.GetInterfaces().Any(y => y == typeof(IInfrastructureModule))
                 )
                 .ToList();
