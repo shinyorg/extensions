@@ -9,6 +9,194 @@ namespace Shiny.Extensions.DependencyInjection.Tests;
 public class DependencyInjectionSourceGeneratorTests
 {
     [Fact]
+    public Task GeneratesForRecords()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Singleton)]
+                public record MyRecordService();
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForRecordWithInterface()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Service(ServiceLifetime.Transient)]
+                public record MyRecordService() : IMyService
+                {
+                    public string GetValue() => "Hello from record";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForRecordWithMultipleInterfaces()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                public interface IMyOtherService
+                {
+                    void DoSomething();
+                }
+
+                [Service(ServiceLifetime.Scoped)]
+                public record MyRecordService() : IMyService, IMyOtherService
+                {
+                    public string GetValue() => "Hello from record";
+                    public void DoSomething() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForKeyedRecord()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Service(ServiceLifetime.Singleton, "RecordKey")]
+                public record MyKeyedRecordService() : IMyService
+                {
+                    public string GetValue() => "Hello from keyed record";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForGenericRecord()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IRepository<T>
+                {
+                    T Get(int id);
+                }
+
+                [Service(ServiceLifetime.Scoped)]
+                public record GenericRecordRepository<T>() : IRepository<T>
+                {
+                    public T Get(int id) => default(T);
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForRecordWithParameters()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string Name { get; }
+                    int Value { get; }
+                }
+
+                [Service(ServiceLifetime.Transient)]
+                public record MyParameterizedRecord(string Name, int Value) : IMyService;
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForMixedClassesAndRecords()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IService1
+                {
+                    void Method1();
+                }
+
+                public interface IService2
+                {
+                    void Method2();
+                }
+
+                [Service(ServiceLifetime.Singleton)]
+                public class ClassService : IService1
+                {
+                    public void Method1() { }
+                }
+
+                [Service(ServiceLifetime.Transient)]
+                public record RecordService() : IService2
+                {
+                    public void Method2() { }
+                }
+
+                [Service(ServiceLifetime.Scoped, "MixedKey")]
+                public record KeyedRecordService(string Data) : IService1
+                {
+                    public void Method1() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
     public Task GeneratesSingletonService()
     {
         var source = """

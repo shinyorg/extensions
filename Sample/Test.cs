@@ -4,6 +4,13 @@ using Shiny.Extensions.DependencyInjection;
 // given the following code from a user
 namespace Sample
 {
+    [Service(ServiceLifetime.Singleton)]
+    public record MyStandardSingletonRecord : IStandardInterface;
+
+    [Service(ServiceLifetime.Scoped)]
+    public record MyStandardScopedRecord;
+    
+    
     public interface IStandardInterface;
 
     public interface IStandardInterface2;

@@ -6,7 +6,6 @@ var services = new ServiceCollection();
 
 // This should call the generated registration method
 services.AddGeneratedServices();
-
 var serviceProvider = services.BuildServiceProvider();
 
 Console.WriteLine("Services registered successfully!");
@@ -21,3 +20,6 @@ Console.WriteLine($"IStandardInterface registered: {standardInterface != null}")
 
 var keyedService = serviceProvider.GetKeyedService<KeyedImplementationOnly>("ImplOnly");
 Console.WriteLine($"KeyedImplementationOnly registered: {keyedService != null}");
+
+var recordService = serviceProvider.GetService<MyStandardSingletonRecord>();
+Console.WriteLine($"MyStandardSingletonRecord registered: {recordService != null}");

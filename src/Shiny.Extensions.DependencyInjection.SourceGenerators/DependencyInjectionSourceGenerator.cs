@@ -2,7 +2,10 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace Shiny.Extensions.DependencyInjection.SourceGenerators;
@@ -13,8 +16,8 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Find classes with Service attribute
-        var classesWithServiceAttribute = context.SyntaxProvider
+        // Find classes and records with Service attribute
+        var typesWithServiceAttribute = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (s, _) => IsSyntaxTargetForGeneration(s),
                 transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx)
@@ -26,25 +29,32 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var configOptions = context.AnalyzerConfigOptionsProvider;
 
         // Combine with compilation and config options for namespace resolution
-        var compilationAndClassesAndConfig = context.CompilationProvider
-            .Combine(classesWithServiceAttribute)
+        var compilationAndTypesAndConfig = context.CompilationProvider
+            .Combine(typesWithServiceAttribute)
             .Combine(configOptions);
 
         context.RegisterSourceOutput(
-            compilationAndClassesAndConfig,
+            compilationAndTypesAndConfig,
             static (spc, source) => Execute(source.Left.Left, source.Left.Right, source.Right, spc)
         );
     }
 
     static bool IsSyntaxTargetForGeneration(SyntaxNode node) => 
-        node is ClassDeclarationSyntax { AttributeLists.Count: > 0 };
+        node is ClassDeclarationSyntax { AttributeLists.Count: > 0 } or 
+                RecordDeclarationSyntax { AttributeLists.Count: > 0 };
     
 
     static ServiceInfo? GetSemanticTargetForGeneration(GeneratorSyntaxContext context)
     {
-        var classDeclaration = (ClassDeclarationSyntax)context.Node;
+        // Handle both class and record declarations
+        TypeDeclarationSyntax typeDeclaration = context.Node switch
+        {
+            ClassDeclarationSyntax classDecl => classDecl,
+            RecordDeclarationSyntax recordDecl => recordDecl,
+            _ => throw new InvalidOperationException($"Unexpected node type: {context.Node.GetType()}")
+        };
         
-        foreach (var attributeList in classDeclaration.AttributeLists)
+        foreach (var attributeList in typeDeclaration.AttributeLists)
         {
             foreach (var attribute in attributeList.Attributes)
             {
@@ -57,7 +67,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
 
                 if (fullName == "Shiny.Extensions.DependencyInjection.ServiceAttribute")
                 {
-                    return ExtractServiceInfo(context, classDeclaration, attribute);
+                    return ExtractServiceInfo(context, typeDeclaration, attribute);
                 }
             }
         }
@@ -65,10 +75,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return null;
     }
 
-    static ServiceInfo? ExtractServiceInfo(GeneratorSyntaxContext context, ClassDeclarationSyntax classDeclaration, AttributeSyntax attribute)
+    static ServiceInfo? ExtractServiceInfo(GeneratorSyntaxContext context, TypeDeclarationSyntax typeDeclaration, AttributeSyntax attribute)
     {
-        var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration) as INamedTypeSymbol;
-        if (classSymbol is null) return null;
+        var typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration) as INamedTypeSymbol;
+        if (typeSymbol is null) return null;
 
         var lifetime = "Singleton"; // default
         string? keyedName = null;
@@ -117,17 +127,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             }
         }
 
-        var interfaces = classSymbol.Interfaces.Select(i => i.ToDisplayString()).ToList();
-        var namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
+        var interfaces = typeSymbol.Interfaces.Select(i => i.ToDisplayString()).ToList();
+        var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
 
         // Check if this is an open generic type (has type parameters)
-        var isOpenGeneric = classSymbol.IsGenericType;
-        var genericArity = isOpenGeneric ? classSymbol.Arity : 0;
+        var isOpenGeneric = typeSymbol.IsGenericType;
+        var genericArity = isOpenGeneric ? typeSymbol.Arity : 0;
         
         return new ServiceInfo
         {
-            ClassName = classSymbol.Name,
-            FullClassName = classSymbol.ToDisplayString(),
+            ClassName = typeSymbol.Name,
+            FullClassName = typeSymbol.ToDisplayString(),
             Namespace = namespaceName,
             Lifetime = lifetime,
             KeyedName = keyedName,
@@ -157,23 +167,20 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var extensionMethodName = GetExtensionMethodName(configOptions);
         var source = GenerateRegistrationCode(targetNamespace, uniqueServices, extensionMethodName);
         
-        var fileName = "GeneratedRegistrations.g.cs";
-        context.AddSource(fileName, source);
+        context.AddSource("GeneratedRegistrations.g.cs", source);
     }
 
     static string GetExtensionMethodName(AnalyzerConfigOptionsProvider configOptions)
     {
-        var globalOptions = configOptions.GlobalOptions;
-        
+        var method = "AddGeneratedServices";
         // Check for ShinyDIExtensionMethodName property
-        if (globalOptions.TryGetValue("build_property.ShinyDIExtensionMethodName", out var methodName) && 
-            !string.IsNullOrEmpty(methodName))
+        if (configOptions.GlobalOptions.TryGetValue("build_property.ShinyDIExtensionMethodName", out var methodName) && 
+            !String.IsNullOrEmpty(methodName))
         {
-            return methodName;
+            method = methodName;
         }
 
-        // Fallback to default name
-        return "AddGeneratedServices";
+        return method;
     }
 
     static string GetTargetNamespace(Compilation compilation, AnalyzerConfigOptionsProvider configOptions)
@@ -215,33 +222,23 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var isGlobalNamespace = string.IsNullOrEmpty(namespaceName) || namespaceName == "<global namespace>";
         
         if (!isGlobalNamespace)
-        {
-            sb.AppendLine($"namespace {namespaceName}");
-            sb.AppendLine("{");
-        }
-
+            sb.AppendLine($"namespace {namespaceName};");
+        
         // Use a consistent class name
-        sb.AppendLine($"    public static class __GeneratedRegistrations");
-        sb.AppendLine("    {");
-        sb.AppendLine($"        public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection {extensionMethodName}(");
-        sb.AppendLine("            this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services");
-        sb.AppendLine("        )");
-        sb.AppendLine("        {");
+        sb.AppendLine("public static class __GeneratedRegistrations");
+        sb.AppendLine("{");
+        sb.AppendLine($"public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection {extensionMethodName}(");
+        sb.AppendLine("    this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services");
+        sb.AppendLine(")");
+        sb.AppendLine("{");
 
         foreach (var service in services)
-        {
             GenerateServiceRegistration(sb, service);
-        }
 
         sb.AppendLine();
-        sb.AppendLine("            return services;");
-        sb.AppendLine("        }");
+        sb.AppendLine("        return services;");
         sb.AppendLine("    }");
-
-        if (!isGlobalNamespace)
-        {
-            sb.AppendLine("}");
-        }
+        sb.AppendLine("}");
 
         return sb.ToString();
     }
@@ -268,17 +265,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
                 else
                 {
                     // Multiple interfaces - register as implementation only for keyed services
-                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
             }
             else
@@ -287,19 +284,19 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"            services.Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
+                    sb.AppendLine($"        services.Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"            services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
+                    sb.AppendLine($"        services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
                 }
                 else
                 {
                     // Multiple interfaces - register for each interface
                     for (int i = 0; i < service.Interfaces.Count; i++)
                     {
-                        sb.AppendLine($"            services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
+                        sb.AppendLine($"        services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
                     }
                 }
             }
@@ -313,18 +310,18 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"            services.AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        services.AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
                 }
                 else
                 {
                     // Multiple interfaces
                     // TODO: this will fail for transient
-                    sb.AppendLine($"            global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services, \"{service.KeyedName}\");");
+                    sb.AppendLine($"        global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services, \"{service.KeyedName}\");");
                 }
             }
             else
@@ -333,18 +330,18 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.FullClassName}>();");
+                    sb.AppendLine($"        services.Add{lifetimeMethod}<global::{service.FullClassName}>();");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"            services.Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
+                    sb.AppendLine($"        services.Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
                 }
                 else
                 {
                     // Multiple interfaces
                     // TODO: this will fail for transient
-                    sb.AppendLine($"            global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services);");
+                    sb.AppendLine($"        global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services);");
                 }
             }
         }
