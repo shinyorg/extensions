@@ -8,7 +8,16 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-        <None Include="build\**" PackagePath="buildTransitive\" Pack="true"/>
+        <None Include="build\Shiny.Extensions.DependencyInjection.SourceGenerators.props"
+              PackagePath="buildTransitive\Shiny.Extensions.DependencyInjection.SourceGenerators.props"
+              Pack="true" 
+              Visible="false"/>
+
+        <None Include="build\Shiny.Extensions.DependencyInjection.SourceGenerators.props"
+              PackagePath="buildTransitive\Shiny.Extensions.DependencyInjection.props"
+              Pack="true"
+              Visible="false"/>
+        
         <None Include="..\Shiny.Extensions.DependencyInjection.SourceGenerators\bin\Release\netstandard2.0\Shiny.Extensions.DependencyInjection.SourceGenerators.dll"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
