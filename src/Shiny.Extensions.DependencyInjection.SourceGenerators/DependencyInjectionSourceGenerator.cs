@@ -2,10 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Text;
 
 namespace Shiny.Extensions.DependencyInjection.SourceGenerators;
@@ -23,12 +20,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx)
             )
             .Where(static m => m is not null)
-            .Collect(); // Collect all results first
+            .Collect();
 
-        // Get analyzer config options for MSBuild properties
         var configOptions = context.AnalyzerConfigOptionsProvider;
 
-        // Combine with compilation and config options for namespace resolution
         var compilationAndTypesAndConfig = context.CompilationProvider
             .Combine(typesWithServiceAttribute)
             .Combine(configOptions);
@@ -165,7 +160,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         // Generate a single extension class for all types in the assembly
         var targetNamespace = GetTargetNamespace(compilation, configOptions);
         var extensionMethodName = GetExtensionMethodName(configOptions);
-        var source = GenerateRegistrationCode(targetNamespace, uniqueServices, extensionMethodName);
+        var useInternalAccessor = configOptions.GlobalOptions.TryGetValue("build_property.ShinyDIUseInternalAccessor", out var useInternal) && 
+                                 bool.TryParse(useInternal, out _);
+        var source = GenerateRegistrationCode(targetNamespace, uniqueServices, extensionMethodName, useInternalAccessor);
         
         context.AddSource("GeneratedRegistrations.g.cs", source);
     }
@@ -211,7 +208,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return "Generated";
     }
 
-    static string GenerateRegistrationCode(string namespaceName, List<ServiceInfo> services, string extensionMethodName)
+    static string GenerateRegistrationCode(string namespaceName, List<ServiceInfo> services, string extensionMethodName, bool useInternalAccessor)
     {
         var sb = new StringBuilder();
         
@@ -222,15 +219,16 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var isGlobalNamespace = string.IsNullOrEmpty(namespaceName) || namespaceName == "<global namespace>";
         
         if (!isGlobalNamespace)
-            sb.AppendLine($"namespace {namespaceName};");
+            sb.AppendLine($"namespace {namespaceName};").AppendLine();
         
         // Use a consistent class name
-        sb.AppendLine("public static class __GeneratedRegistrations");
+        var accessModifier = useInternalAccessor ? "internal" : "public";
+        sb.AppendLine($"{accessModifier} static class __GeneratedRegistrations");
         sb.AppendLine("{");
-        sb.AppendLine($"public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection {extensionMethodName}(");
-        sb.AppendLine("    this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services");
-        sb.AppendLine(")");
-        sb.AppendLine("{");
+        sb.AppendLine($"    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection {extensionMethodName}(");
+        sb.AppendLine("        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services");
+        sb.AppendLine("    )");
+        sb.AppendLine("    {");
 
         foreach (var service in services)
             GenerateServiceRegistration(sb, service);

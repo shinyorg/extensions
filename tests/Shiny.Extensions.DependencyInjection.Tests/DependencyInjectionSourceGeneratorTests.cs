@@ -1021,6 +1021,67 @@ public class DependencyInjectionSourceGeneratorTests
         return TestHelper.Verify(source, msBuildProperties);
     }
 
+    [Fact]
+    public Task GeneratesWithInternalAccessor()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    void DoWork();
+                }
+
+                [Service(ServiceLifetime.Singleton)]
+                public class MyService : IMyService
+                {
+                    public void DoWork() { }
+                }
+
+                [Service(ServiceLifetime.Transient)]
+                public class AnotherService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIUseInternalAccessor"] = "true"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
+    [Fact]
+    public Task GeneratesWithInternalAccessorAndCustomNamespace()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Service(ServiceLifetime.Scoped)]
+                public class MyInternalService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIUseInternalAccessor"] = "true",
+            ["build_property.ShinyDIExtensionNamespace"] = "Internal.Extensions",
+            ["build_property.ShinyDIExtensionMethodName"] = "AddInternalServices"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
     static class TestHelper
     {
         public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)
