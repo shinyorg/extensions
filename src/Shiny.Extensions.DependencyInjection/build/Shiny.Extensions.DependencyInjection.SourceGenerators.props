@@ -8,5 +8,6 @@
         <CompilerVisibleProperty Include="ShinyDIExtensionMethodName" />
         <CompilerVisibleProperty Include="RootNamespace" />
         <CompilerVisibleProperty Include="ShinyDIExtensionNamespace" />
+        <CompilerVisibleProperty Include="ShinyDIExtensionInternalAccessor" />
     </ItemGroup>
 </Project>

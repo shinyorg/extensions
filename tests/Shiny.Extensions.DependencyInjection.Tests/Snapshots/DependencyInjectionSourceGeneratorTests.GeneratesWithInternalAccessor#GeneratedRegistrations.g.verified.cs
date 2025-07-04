@@ -4,14 +4,14 @@ using global::Microsoft.Extensions.DependencyInjection;
 
 namespace Tests;
 
-public static class __GeneratedRegistrations
+internal static class __GeneratedRegistrations
 {
     public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedServices(
         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
     )
     {
-        services.AddTransient(typeof(global::TestNamespace.IRepository<>), typeof(global::TestNamespace.GenericService<>));
-        services.AddTransient(typeof(global::TestNamespace.IGenericService<>), typeof(global::TestNamespace.GenericService<>));
+        services.AddSingleton<global::TestNamespace.IMyService, global::TestNamespace.MyService>();
+        services.AddTransient<global::TestNamespace.AnotherService>();
 
         return services;
     }
