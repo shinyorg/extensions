@@ -1,11 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Sample;
+﻿using Sample;
 
 // Test the source generator
 var services = new ServiceCollection();
 
 // This should call the generated registration method
-services.AddGeneratedServices();
+services.AddSampleGeneratedServices();
 var serviceProvider = services.BuildServiceProvider();
 
 Console.WriteLine("Services registered successfully!");
