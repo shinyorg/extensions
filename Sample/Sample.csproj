@@ -6,6 +6,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+
+        <ShinyDIExtensionMethodName>AddSampleGeneratedServices</ShinyDIExtensionMethodName>
     </PropertyGroup>
 
     <ItemGroup>
@@ -15,4 +17,5 @@
                           ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
+    <Import Project="../src/Shiny.Extensions.DependencyInjection/build/Shiny.Extensions.DependencyInjection.SourceGenerators.props" />
 </Project>
