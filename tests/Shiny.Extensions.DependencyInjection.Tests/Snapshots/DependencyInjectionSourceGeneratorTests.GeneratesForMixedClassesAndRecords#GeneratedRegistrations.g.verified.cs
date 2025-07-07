@@ -11,8 +11,8 @@ public static class __GeneratedRegistrations
     )
     {
         services.AddSingleton<global::TestNamespace.IService1, global::TestNamespace.ClassService>();
-        global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.AddTransientAsImplementedInterfaces<global::TestNamespace.RecordService>(services);
-        global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.AddScopedAsImplementedInterfaces<global::TestNamespace.KeyedRecordService>(services, "MixedKey");
+        services.AddTransient<global::TestNamespace.IService2, global::TestNamespace.RecordService>();
+        services.AddKeyedScoped<global::TestNamespace.IService1, global::TestNamespace.KeyedRecordService>("MixedKey");
 
         return services;
     }

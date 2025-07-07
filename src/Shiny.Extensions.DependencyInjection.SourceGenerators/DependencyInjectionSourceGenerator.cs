@@ -122,7 +122,11 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             }
         }
 
-        var interfaces = typeSymbol.Interfaces.Select(i => i.ToDisplayString()).ToList();
+        // Filter out system interfaces - only include user-defined interfaces
+        var interfaces = typeSymbol.Interfaces
+            .Where(i => !i.ToDisplayString().StartsWith("System."))
+            .Select(i => i.ToDisplayString())
+            .ToList();
         var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
 
         // Check if this is an open generic type (has type parameters)

@@ -10,7 +10,7 @@ public static class __GeneratedRegistrations
         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
     )
     {
-        services.AddSingleton<global::System.IEquatable<TestNamespace.MyRecordService>, global::TestNamespace.MyRecordService>();
+        services.AddSingleton<global::TestNamespace.MyRecordService>();
         services.AddSingleton<global::TestNamespace.HellWorld>();
 
         return services;

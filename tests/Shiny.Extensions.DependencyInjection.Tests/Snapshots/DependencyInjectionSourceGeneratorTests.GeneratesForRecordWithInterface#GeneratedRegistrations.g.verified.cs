@@ -10,7 +10,7 @@ public static class __GeneratedRegistrations
         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
     )
     {
-        global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.AddTransientAsImplementedInterfaces<global::TestNamespace.MyRecordService>(services);
+        services.AddTransient<global::TestNamespace.IMyService, global::TestNamespace.MyRecordService>();
 
         return services;
     }

@@ -11,7 +11,6 @@ public static class __GeneratedRegistrations
     )
     {
         services.AddScoped(typeof(global::TestNamespace.IRepository<>), typeof(global::TestNamespace.GenericRecordRepository<>));
-        services.AddScoped(typeof(global::System.IEquatable<TestNamespace.GenericRecordRepository<>), typeof(global::TestNamespace.GenericRecordRepository<>));
 
         return services;
     }
