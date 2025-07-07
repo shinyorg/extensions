@@ -9,6 +9,22 @@ namespace Shiny.Extensions.DependencyInjection.Tests;
 public class DependencyInjectionSourceGeneratorTests
 {
     [Fact]
+    public Task GeneratesExtensionMethodWithNoTypes()
+    {
+        var source = """
+             using Microsoft.Extensions.DependencyInjection;
+             using Shiny.Extensions.DependencyInjection;
+
+             namespace TestNamespace
+             {
+                 public record MyRecordService();
+             }
+             """;
+
+        return TestHelper.Verify(source);
+    }
+    
+    [Fact]
     public Task GeneratesForRecords()
     {
         var source = """
@@ -21,6 +37,26 @@ public class DependencyInjectionSourceGeneratorTests
                 public record MyRecordService();
             }
             """;
+
+        return TestHelper.Verify(source);
+    }
+    
+    [Fact]
+    public Task GeneratesForRecordsWithTypes()
+    {
+        var source = """
+             using Microsoft.Extensions.DependencyInjection;
+             using Shiny.Extensions.DependencyInjection;
+
+             namespace TestNamespace
+             {
+                 [Service(ServiceLifetime.Singleton)]
+                 public record MyRecordService(HellWorld HelloWorld);
+                 
+                 [Service(ServiceLifetime.Singleton)]
+                 public class HellWorld {}
+             }
+             """;
 
         return TestHelper.Verify(source);
     }

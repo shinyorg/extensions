@@ -10,7 +10,7 @@ public static class __GeneratedRegistrations
         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
     )
     {
-        global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.AddSingletonAsImplementedInterfaces<global::TestNamespace.MyKeyedRecordService>(services, "RecordKey");
+        services.AddKeyedSingleton<global::TestNamespace.IMyService, global::TestNamespace.MyKeyedRecordService>("RecordKey");
 
         return services;
     }

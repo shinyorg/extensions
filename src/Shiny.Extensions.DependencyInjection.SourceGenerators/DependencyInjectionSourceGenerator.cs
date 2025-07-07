@@ -122,7 +122,11 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             }
         }
 
-        var interfaces = typeSymbol.Interfaces.Select(i => i.ToDisplayString()).ToList();
+        // Filter out system interfaces - only include user-defined interfaces
+        var interfaces = typeSymbol.Interfaces
+            .Where(i => !i.ToDisplayString().StartsWith("System."))
+            .Select(i => i.ToDisplayString())
+            .ToList();
         var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
 
         // Check if this is an open generic type (has type parameters)
@@ -144,12 +148,13 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
 
     static void Execute(Compilation compilation, ImmutableArray<ServiceInfo?> services, AnalyzerConfigOptionsProvider configOptions, SourceProductionContext context)
     {
-        if (services.IsDefaultOrEmpty)
-            return;
-
-        var validServices = services.Where(s => s != null).Cast<ServiceInfo>().ToList();
-        if (validServices.Count == 0)
-            return;
+        // Always generate the extension class, even if there are no services
+        var validServices = services.IsDefaultOrEmpty 
+            ? []
+            : services
+                .Where(s => s != null)
+                .Cast<ServiceInfo>()
+                .ToList();
 
         // Remove duplicates by creating a HashSet based on full class name
         var uniqueServices = validServices
@@ -161,7 +166,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var targetNamespace = GetTargetNamespace(compilation, configOptions);
         var extensionMethodName = GetExtensionMethodName(configOptions);
         var useInternalAccessor = configOptions.GlobalOptions.TryGetValue("build_property.ShinyDIUseInternalAccessor", out var useInternal) && 
-                                 bool.TryParse(useInternal, out _);
+                                  Boolean.TryParse(useInternal, out _);
         var source = GenerateRegistrationCode(targetNamespace, uniqueServices, extensionMethodName, useInternalAccessor);
         
         context.AddSource("GeneratedRegistrations.g.cs", source);
@@ -170,7 +175,6 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
     static string GetExtensionMethodName(AnalyzerConfigOptionsProvider configOptions)
     {
         var method = "AddGeneratedServices";
-        // Check for ShinyDIExtensionMethodName property
         if (configOptions.GlobalOptions.TryGetValue("build_property.ShinyDIExtensionMethodName", out var methodName) && 
             !String.IsNullOrEmpty(methodName))
         {

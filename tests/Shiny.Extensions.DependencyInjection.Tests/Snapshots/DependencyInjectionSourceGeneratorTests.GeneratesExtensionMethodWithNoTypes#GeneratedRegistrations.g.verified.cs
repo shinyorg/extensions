@@ -10,7 +10,6 @@ public static class __GeneratedRegistrations
         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
     )
     {
-        services.AddTransient<global::TestNamespace.IMyService, global::TestNamespace.MyParameterizedRecord>();
 
         return services;
     }
