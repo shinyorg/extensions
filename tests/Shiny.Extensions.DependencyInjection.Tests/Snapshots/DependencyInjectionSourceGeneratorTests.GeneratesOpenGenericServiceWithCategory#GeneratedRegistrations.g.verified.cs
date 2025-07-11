@@ -11,8 +11,10 @@ public static class __GeneratedRegistrations
         string? category = null
     )
     {
-        services.AddSingleton(typeof(global::TestNamespace.StandaloneGeneric<,>));
-        services.AddKeyedTransient(typeof(global::TestNamespace.KeyedStandaloneGeneric<,,>), "multi");
+        if (category?.Equals("RepositoryCategory", global::System.StringComparison.OrdinalIgnoreCase) == true)
+        {
+            services.AddScoped(typeof(global::TestNamespace.IRepository<>), typeof(global::TestNamespace.Repository<>));
+        }
 
         return services;
     }

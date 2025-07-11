@@ -7,7 +7,8 @@ namespace Tests;
 public static class __GeneratedRegistrations
 {
     public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedServices(
-        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
+        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
+        string? category = null
     )
     {
         services.AddSingleton<global::TestNamespace.MySingletonService>();

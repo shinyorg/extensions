@@ -11,8 +11,10 @@ public static class __GeneratedRegistrations
         string? category = null
     )
     {
-        services.AddSingleton(typeof(global::TestNamespace.StandaloneGeneric<,>));
-        services.AddKeyedTransient(typeof(global::TestNamespace.KeyedStandaloneGeneric<,,>), "multi");
+        if (category?.Equals("MyCategory", global::System.StringComparison.OrdinalIgnoreCase) == true)
+        {
+            services.AddSingleton<global::TestNamespace.IMyService, global::TestNamespace.MyService>();
+        }
 
         return services;
     }

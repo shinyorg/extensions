@@ -1118,6 +1118,316 @@ public class DependencyInjectionSourceGeneratorTests
         return TestHelper.Verify(source, msBuildProperties);
     }
 
+    [Fact]
+    public Task GeneratesServiceWithCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    void DoWork();
+                }
+
+                [Service(ServiceLifetime.Singleton, null, "MyCategory")]
+                public class MyService : IMyService
+                {
+                    public void DoWork() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesKeyedServiceWithCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    void DoWork();
+                }
+
+                [Service(ServiceLifetime.Scoped, "MyKey", "CategoryA")]
+                public class MyKeyedService : IMyService
+                {
+                    public void DoWork() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesMultipleServicesWithDifferentCategories()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IService1
+                {
+                    void Method1();
+                }
+
+                public interface IService2
+                {
+                    void Method2();
+                }
+
+                public interface IService3
+                {
+                    void Method3();
+                }
+
+                [Service(ServiceLifetime.Singleton, null, "CategoryA")]
+                public class ServiceA : IService1
+                {
+                    public void Method1() { }
+                }
+
+                [Service(ServiceLifetime.Transient, null, "CategoryB")]
+                public class ServiceB : IService2
+                {
+                    public void Method2() { }
+                }
+
+                [Service(ServiceLifetime.Scoped)]
+                public class ServiceC : IService3
+                {
+                    public void Method3() { }
+                }
+
+                [Service(ServiceLifetime.Singleton, "KeyedService", "CategoryA")]
+                public class KeyedServiceA : IService1
+                {
+                    public void Method1() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesOpenGenericServiceWithCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IRepository<T>
+                {
+                    T Get(int id);
+                }
+
+                [Service(ServiceLifetime.Scoped, null, "RepositoryCategory")]
+                public class Repository<T> : IRepository<T>
+                {
+                    public T Get(int id) => default(T);
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesKeyedOpenGenericServiceWithCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IGenericHandler<T>
+                {
+                    void Handle(T item);
+                }
+
+                [Service(ServiceLifetime.Singleton, "special", "HandlerCategory")]
+                public class SpecialGenericHandler<T> : IGenericHandler<T>
+                {
+                    public void Handle(T item) { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesServiceWithMultipleInterfacesAndCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    void DoWork();
+                }
+
+                public interface IMyOtherService
+                {
+                    void DoOtherWork();
+                }
+
+                [Service(ServiceLifetime.Transient, null, "MultiInterfaceCategory")]
+                public class MultiInterfaceService : IMyService, IMyOtherService
+                {
+                    public void DoWork() { }
+                    public void DoOtherWork() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesMixedCategorizedAndNonCategorizedServices()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IService1
+                {
+                    void Method1();
+                }
+
+                public interface IService2
+                {
+                    void Method2();
+                }
+
+                public interface IGenericService<T>
+                {
+                    T Process(T input);
+                }
+
+                [Service(ServiceLifetime.Singleton)]
+                public class NormalService : IService1
+                {
+                    public void Method1() { }
+                }
+
+                [Service(ServiceLifetime.Transient, null, "CategoryX")]
+                public class CategorizedService : IService2
+                {
+                    public void Method2() { }
+                }
+
+                [Service(ServiceLifetime.Scoped, "KeyedNormal")]
+                public class KeyedNormalService : IService1
+                {
+                    public void Method1() { }
+                }
+
+                [Service(ServiceLifetime.Scoped, "KeyedCategorized", "CategoryY")]
+                public class KeyedCategorizedService : IService2
+                {
+                    public void Method2() { }
+                }
+
+                [Service(ServiceLifetime.Singleton, null, "GenericCategory")]
+                public class GenericCategorizedService<T> : IGenericService<T>
+                {
+                    public T Process(T input) => input;
+                }
+
+                [Service(ServiceLifetime.Transient)]
+                public class GenericNormalService<T> : IGenericService<T>
+                {
+                    public T Process(T input) => input;
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesRecordWithCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Service(ServiceLifetime.Transient, null, "RecordCategory")]
+                public record MyRecordService() : IMyService
+                {
+                    public string GetValue() => "Hello from categorized record";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesWithCategoryAndCustomExtensionMethod()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    void DoWork();
+                }
+
+                [Service(ServiceLifetime.Singleton, null, "SpecialCategory")]
+                public class SpecialService : IMyService
+                {
+                    public void DoWork() { }
+                }
+
+                [Service(ServiceLifetime.Transient)]
+                public class RegularService
+                {
+                }
+            }
+            """;
+
+        var msBuildProperties = new Dictionary<string, string>
+        {
+            ["build_property.ShinyDIExtensionMethodName"] = "AddCategorizedServices",
+            ["build_property.ShinyDIExtensionNamespace"] = "CustomExtensions"
+        };
+
+        return TestHelper.Verify(source, msBuildProperties);
+    }
+
     static class TestHelper
     {
         public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)

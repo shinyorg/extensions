@@ -11,8 +11,10 @@ public static class __GeneratedRegistrations
         string? category = null
     )
     {
-        services.AddSingleton(typeof(global::TestNamespace.StandaloneGeneric<,>));
-        services.AddKeyedTransient(typeof(global::TestNamespace.KeyedStandaloneGeneric<,,>), "multi");
+        if (category?.Equals("MultiInterfaceCategory", global::System.StringComparison.OrdinalIgnoreCase) == true)
+        {
+            global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.AddTransientAsImplementedInterfaces<global::TestNamespace.MultiInterfaceService>(services);
+        }
 
         return services;
     }

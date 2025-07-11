@@ -7,7 +7,8 @@ namespace Internal.Extensions;
 internal static class __GeneratedRegistrations
 {
     public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddInternalServices(
-        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services
+        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
+        string? category = null
     )
     {
         services.AddScoped<global::TestNamespace.MyInternalService>();
