@@ -79,55 +79,75 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         string? keyedName = null;
         string? category = null;
 
-        if (attribute.ArgumentList?.Arguments.Count > 0)
+        // Get the attribute symbol to access property values
+        var attributeSymbol = context.SemanticModel.GetSymbolInfo(attribute).Symbol as IMethodSymbol;
+        var attributeData = typeSymbol.GetAttributes()
+            .FirstOrDefault(ad => ad.AttributeClass?.ToDisplayString() == "Shiny.Extensions.DependencyInjection.ServiceAttribute");
+
+        if (attributeData != null)
         {
-            var firstArg = attribute.ArgumentList.Arguments[0];
-            if (context.SemanticModel.GetConstantValue(firstArg.Expression).HasValue)
+            // Extract lifetime from constructor argument
+            if (attributeData.ConstructorArguments.Length > 0)
             {
-                var lifetimeValue = context.SemanticModel.GetConstantValue(firstArg.Expression).Value;
-                // ServiceLifetime enum: Singleton = 0, Scoped = 1, Transient = 2
+                var lifetimeValue = attributeData.ConstructorArguments[0].Value;
                 if (lifetimeValue is int enumValue)
                 {
                     lifetime = enumValue switch
                     {
-                        0 => "Singleton",
                         1 => "Scoped", 
                         2 => "Transient",
                         _ => "Singleton"
                     };
                 }
+            }
+
+            // Extract KeyedName and Category from named arguments (properties)
+            foreach (var namedArg in attributeData.NamedArguments)
+            {
+                if (namedArg.Key == "KeyedName" && namedArg.Value.Value is string keyedNameValue)
+                {
+                    keyedName = keyedNameValue;
+                }
+                else if (namedArg.Key == "Category" && namedArg.Value.Value is string categoryValue)
+                {
+                    category = categoryValue;
+                }
+            }
+        }
+        else
+        {
+            // Fallback to old parsing logic for backward compatibility
+            if (attribute.ArgumentList?.Arguments.Count > 0)
+            {
+                var firstArg = attribute.ArgumentList.Arguments[0];
+                if (context.SemanticModel.GetConstantValue(firstArg.Expression).HasValue)
+                {
+                    var lifetimeValue = context.SemanticModel.GetConstantValue(firstArg.Expression).Value;
+                    // ServiceLifetime enum: Singleton = 0, Scoped = 1, Transient = 2
+                    if (lifetimeValue is int enumValue)
+                    {
+                        lifetime = enumValue switch
+                        {
+                            1 => "Scoped", 
+                            2 => "Transient",
+                            _ => "Singleton"
+                        };
+                    }
+                    else
+                    {
+                        lifetime = lifetimeValue?.ToString() ?? "Singleton";
+                    }
+                }
                 else
                 {
-                    lifetime = lifetimeValue?.ToString() ?? "Singleton";
-                }
-            }
-            else
-            {
-                // Handle ServiceLifetime enum values
-                var expressionText = firstArg.Expression.ToString();
-                if (expressionText.Contains("Singleton"))
-                    lifetime = "Singleton";
-                else if (expressionText.Contains("Transient"))
-                    lifetime = "Transient";
-                else if (expressionText.Contains("Scoped"))
-                    lifetime = "Scoped";
-            }
-
-            if (attribute.ArgumentList.Arguments.Count > 1)
-            {
-                var secondArg = attribute.ArgumentList.Arguments[1];
-                if (context.SemanticModel.GetConstantValue(secondArg.Expression).HasValue)
-                {
-                    keyedName = context.SemanticModel.GetConstantValue(secondArg.Expression).Value as string;
-                }
-            }
-
-            if (attribute.ArgumentList.Arguments.Count > 2)
-            {
-                var thirdArg = attribute.ArgumentList.Arguments[2];
-                if (context.SemanticModel.GetConstantValue(thirdArg.Expression).HasValue)
-                {
-                    category = context.SemanticModel.GetConstantValue(thirdArg.Expression).Value as string;
+                    // Handle ServiceLifetime enum values
+                    var expressionText = firstArg.Expression.ToString();
+                    if (expressionText.Contains("Singleton"))
+                        lifetime = "Singleton";
+                    else if (expressionText.Contains("Transient"))
+                        lifetime = "Transient";
+                    else if (expressionText.Contains("Scoped"))
+                        lifetime = "Scoped";
                 }
             }
         }
@@ -228,6 +248,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var sb = new StringBuilder();
         
         sb.AppendLine("// <auto-generated />");
+        sb.AppendLine("using global::System.Linq;");
         sb.AppendLine("using global::Microsoft.Extensions.DependencyInjection;");
         sb.AppendLine();
         
@@ -242,7 +263,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.AppendLine($"    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection {extensionMethodName}(");
         sb.AppendLine("        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,");
-        sb.AppendLine("        string? category = null");
+        sb.AppendLine("        params string[] categories");
         sb.AppendLine("    )");
         sb.AppendLine("    {");
 
@@ -269,7 +290,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         // If service has a category, wrap the registration in a conditional check
         if (!string.IsNullOrEmpty(service.Category))
         {
-            sb.AppendLine($"        if (category?.Equals(\"{service.Category}\", global::System.StringComparison.OrdinalIgnoreCase) == true)");
+            sb.AppendLine($"        if (categories?.Any(x => x.Equals(\"{service.Category}\", global::System.StringComparison.OrdinalIgnoreCase)) == true)");
             sb.AppendLine("        {");
         }
 

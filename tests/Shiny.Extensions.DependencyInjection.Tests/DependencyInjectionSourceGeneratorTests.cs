@@ -131,7 +131,7 @@ public class DependencyInjectionSourceGeneratorTests
                     string GetValue();
                 }
 
-                [Service(ServiceLifetime.Singleton, "RecordKey")]
+                [Service(ServiceLifetime.Singleton, KeyedName = "RecordKey")]
                 public record MyKeyedRecordService() : IMyService
                 {
                     public string GetValue() => "Hello from keyed record";
@@ -221,7 +221,7 @@ public class DependencyInjectionSourceGeneratorTests
                     public void Method2() { }
                 }
 
-                [Service(ServiceLifetime.Scoped, "MixedKey")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "MixedKey")]
                 public record KeyedRecordService(string Data) : IService1
                 {
                     public void Method1() { }
@@ -298,7 +298,7 @@ public class DependencyInjectionSourceGeneratorTests
 
             namespace TestNamespace
             {
-                [Service(ServiceLifetime.Singleton, "MyKey")]
+                [Service(ServiceLifetime.Singleton, KeyedName = "MyKey")]
                 public class MyKeyedService
                 {
                 }
@@ -371,7 +371,7 @@ public class DependencyInjectionSourceGeneratorTests
                 {
                 }
 
-                [Service(ServiceLifetime.Scoped, "MyKey")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "MyKey")]
                 public class MyKeyedService : IMyService
                 {
                 }
@@ -403,7 +403,7 @@ public class DependencyInjectionSourceGeneratorTests
                 {
                 }
 
-                [Service(ServiceLifetime.Transient, "Key1")]
+                [Service(ServiceLifetime.Transient, KeyedName = "Key1")]
                 public class KeyedService1
                 {
                 }
@@ -509,7 +509,7 @@ public class DependencyInjectionSourceGeneratorTests
                     void Handle(T item);
                 }
 
-                [Service(ServiceLifetime.Singleton, "special")]
+                [Service(ServiceLifetime.Singleton, KeyedName = "special")]
                 public class SpecialGenericHandler<T> : IGenericHandler<T>
                 {
                     public void Handle(T item) { }
@@ -529,7 +529,7 @@ public class DependencyInjectionSourceGeneratorTests
 
             namespace TestNamespace
             {
-                [Service(ServiceLifetime.Transient, "mykey")]
+                [Service(ServiceLifetime.Transient, KeyedName = "mykey")]
                 public class KeyedGenericService<T>
                 {
                     public T Process() => default(T);
@@ -596,7 +596,7 @@ public class DependencyInjectionSourceGeneratorTests
                     public void Log(string message) { }
                 }
 
-                [Service(ServiceLifetime.Scoped, "cached")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "cached")]
                 public class CachedRepository<T> : IRepository<T>
                 {
                     public T Get(int id) => default(T);
@@ -702,7 +702,7 @@ public class DependencyInjectionSourceGeneratorTests
                     TDestination Map(TSource source);
                 }
 
-                [Service(ServiceLifetime.Scoped, "auto")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "auto")]
                 public class AutoMapper<TSource, TDestination> : IMapper<TSource, TDestination>
                 {
                     public TDestination Map(TSource source) => default(TDestination);
@@ -792,7 +792,7 @@ public class DependencyInjectionSourceGeneratorTests
                     public T3 Process(T1 input1, T2 input2) => default(T3);
                 }
 
-                [Service(ServiceLifetime.Scoped, "special")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "special")]
                 public class KeyedDualGeneric<TIn, TOut> : IConverter<TIn, TOut>
                 {
                     public TOut Convert(TIn input) => default(TOut);
@@ -818,7 +818,7 @@ public class DependencyInjectionSourceGeneratorTests
                     public T2 Process(T1 input) => default(T2);
                 }
 
-                [Service(ServiceLifetime.Transient, "multi")]
+                [Service(ServiceLifetime.Transient, KeyedName = "multi")]
                 public class KeyedStandaloneGeneric<T1, T2, T3>
                 {
                     public T3 Transform(T1 input1, T2 input2) => default(T3);
@@ -1132,7 +1132,7 @@ public class DependencyInjectionSourceGeneratorTests
                     void DoWork();
                 }
 
-                [Service(ServiceLifetime.Singleton, null, "MyCategory")]
+                [Service(ServiceLifetime.Singleton, Category = "MyCategory")]
                 public class MyService : IMyService
                 {
                     public void DoWork() { }
@@ -1157,7 +1157,7 @@ public class DependencyInjectionSourceGeneratorTests
                     void DoWork();
                 }
 
-                [Service(ServiceLifetime.Scoped, "MyKey", "CategoryA")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "MyKey", Category = "CategoryA")]
                 public class MyKeyedService : IMyService
                 {
                     public void DoWork() { }
@@ -1192,13 +1192,13 @@ public class DependencyInjectionSourceGeneratorTests
                     void Method3();
                 }
 
-                [Service(ServiceLifetime.Singleton, null, "CategoryA")]
+                [Service(ServiceLifetime.Singleton, Category = "CategoryA")]
                 public class ServiceA : IService1
                 {
                     public void Method1() { }
                 }
 
-                [Service(ServiceLifetime.Transient, null, "CategoryB")]
+                [Service(ServiceLifetime.Transient, Category = "CategoryB")]
                 public class ServiceB : IService2
                 {
                     public void Method2() { }
@@ -1210,7 +1210,7 @@ public class DependencyInjectionSourceGeneratorTests
                     public void Method3() { }
                 }
 
-                [Service(ServiceLifetime.Singleton, "KeyedService", "CategoryA")]
+                [Service(ServiceLifetime.Singleton, KeyedName = "KeyedService", Category = "CategoryA")]
                 public class KeyedServiceA : IService1
                 {
                     public void Method1() { }
@@ -1235,7 +1235,7 @@ public class DependencyInjectionSourceGeneratorTests
                     T Get(int id);
                 }
 
-                [Service(ServiceLifetime.Scoped, null, "RepositoryCategory")]
+                [Service(ServiceLifetime.Scoped, Category = "RepositoryCategory")]
                 public class Repository<T> : IRepository<T>
                 {
                     public T Get(int id) => default(T);
@@ -1260,7 +1260,7 @@ public class DependencyInjectionSourceGeneratorTests
                     void Handle(T item);
                 }
 
-                [Service(ServiceLifetime.Singleton, "special", "HandlerCategory")]
+                [Service(ServiceLifetime.Singleton, KeyedName = "special", Category = "HandlerCategory")]
                 public class SpecialGenericHandler<T> : IGenericHandler<T>
                 {
                     public void Handle(T item) { }
@@ -1290,7 +1290,7 @@ public class DependencyInjectionSourceGeneratorTests
                     void DoOtherWork();
                 }
 
-                [Service(ServiceLifetime.Transient, null, "MultiInterfaceCategory")]
+                [Service(ServiceLifetime.Transient, Category = "MultiInterfaceCategory")]
                 public class MultiInterfaceService : IMyService, IMyOtherService
                 {
                     public void DoWork() { }
@@ -1332,25 +1332,25 @@ public class DependencyInjectionSourceGeneratorTests
                     public void Method1() { }
                 }
 
-                [Service(ServiceLifetime.Transient, null, "CategoryX")]
+                [Service(ServiceLifetime.Transient, Category = "CategoryX")]
                 public class CategorizedService : IService2
                 {
                     public void Method2() { }
                 }
 
-                [Service(ServiceLifetime.Scoped, "KeyedNormal")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "KeyedNormal")]
                 public class KeyedNormalService : IService1
                 {
                     public void Method1() { }
                 }
 
-                [Service(ServiceLifetime.Scoped, "KeyedCategorized", "CategoryY")]
+                [Service(ServiceLifetime.Scoped, KeyedName = "KeyedCategorized", Category = "CategoryY")]
                 public class KeyedCategorizedService : IService2
                 {
                     public void Method2() { }
                 }
 
-                [Service(ServiceLifetime.Singleton, null, "GenericCategory")]
+                [Service(ServiceLifetime.Singleton, Category = "GenericCategory")]
                 public class GenericCategorizedService<T> : IGenericService<T>
                 {
                     public T Process(T input) => input;
@@ -1381,7 +1381,7 @@ public class DependencyInjectionSourceGeneratorTests
                     string GetValue();
                 }
 
-                [Service(ServiceLifetime.Transient, null, "RecordCategory")]
+                [Service(ServiceLifetime.Transient, Category = "RecordCategory")]
                 public record MyRecordService() : IMyService
                 {
                     public string GetValue() => "Hello from categorized record";
@@ -1406,7 +1406,7 @@ public class DependencyInjectionSourceGeneratorTests
                     void DoWork();
                 }
 
-                [Service(ServiceLifetime.Singleton, null, "SpecialCategory")]
+                [Service(ServiceLifetime.Singleton, Category = "SpecialCategory")]
                 public class SpecialService : IMyService
                 {
                     public void DoWork() { }
@@ -1426,6 +1426,106 @@ public class DependencyInjectionSourceGeneratorTests
         };
 
         return TestHelper.Verify(source, msBuildProperties);
+    }
+
+    [Fact]
+    public Task GeneratesForServiceWithKeyedName()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Service(ServiceLifetime.Transient, KeyedName = "MyKey")]
+                public class MyService : IMyService
+                {
+                    public string GetValue() => "Hello with key";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForServiceWithCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Service(ServiceLifetime.Scoped, Category = "MyCategory")]
+                public class MyService : IMyService
+                {
+                    public string GetValue() => "Hello with category";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForServiceWithKeyedNameAndCategory()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Service(ServiceLifetime.Singleton, KeyedName = "MyKey", Category = "MyCategory")]
+                public class MyService : IMyService
+                {
+                    public string GetValue() => "Hello with key and category";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForRecordWithKeyedName()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Service(ServiceLifetime.Transient, KeyedName = "RecordKey")]
+                public record MyRecordService() : IMyService
+                {
+                    public string GetValue() => "Hello from keyed record";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
     }
 
     static class TestHelper
