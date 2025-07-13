@@ -12,7 +12,10 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddSingleton<global::TestNamespace.MyRecordService>();
+        if (categories?.Any(x => x.Equals("MultiInterfaceCategory", global::System.StringComparison.OrdinalIgnoreCase)) == true)
+        {
+            global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.AddTransientAsImplementedInterfaces<global::TestNamespace.MultiInterfaceService>(services);
+        }
 
         return services;
     }

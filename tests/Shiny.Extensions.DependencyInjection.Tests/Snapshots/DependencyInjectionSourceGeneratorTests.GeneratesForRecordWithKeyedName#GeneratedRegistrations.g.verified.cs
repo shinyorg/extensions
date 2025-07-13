@@ -12,7 +12,7 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddSingleton<global::TestNamespace.MyRecordService>();
+        services.AddKeyedTransient<global::TestNamespace.IMyService, global::TestNamespace.MyRecordService>("RecordKey");
 
         return services;
     }

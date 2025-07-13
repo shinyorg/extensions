@@ -12,7 +12,10 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddSingleton<global::TestNamespace.MyRecordService>();
+        if (categories?.Any(x => x.Equals("CategoryA", global::System.StringComparison.OrdinalIgnoreCase)) == true)
+        {
+            services.AddKeyedScoped<global::TestNamespace.IMyService, global::TestNamespace.MyKeyedService>("MyKey");
+        }
 
         return services;
     }
