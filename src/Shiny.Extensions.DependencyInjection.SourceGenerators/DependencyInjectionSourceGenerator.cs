@@ -78,9 +78,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var lifetime = "Singleton"; // default
         string? keyedName = null;
         string? category = null;
+        bool isTryAdd = false;
 
         // Get the attribute symbol to access property values
-        var attributeSymbol = context.SemanticModel.GetSymbolInfo(attribute).Symbol as IMethodSymbol;
+        // var attributeSymbol = context.SemanticModel.GetSymbolInfo(attribute).Symbol as IMethodSymbol;
         var attributeData = typeSymbol.GetAttributes()
             .FirstOrDefault(ad => ad.AttributeClass?.ToDisplayString() == "Shiny.Extensions.DependencyInjection.ServiceAttribute");
 
@@ -101,16 +102,19 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 }
             }
 
-            // Extract KeyedName and Category from named arguments (properties)
             foreach (var namedArg in attributeData.NamedArguments)
             {
-                if (namedArg.Key == "KeyedName" && namedArg.Value.Value is string keyedNameValue)
+                if (namedArg is { Key: "KeyedName", Value.Value: string keyedNameValue })
                 {
                     keyedName = keyedNameValue;
                 }
-                else if (namedArg.Key == "Category" && namedArg.Value.Value is string categoryValue)
+                else if (namedArg is { Key: "Category", Value.Value: string categoryValue })
                 {
                     category = categoryValue;
+                }
+                else if (namedArg is { Key: "TryAdd", Value.Value: bool tryAddValue })
+                {
+                    isTryAdd = tryAddValue;
                 }
             }
         }
@@ -166,6 +170,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return new ServiceInfo
         {
             ClassName = typeSymbol.Name,
+            TryAdd = isTryAdd,
             FullClassName = typeSymbol.ToDisplayString(),
             Namespace = namespaceName,
             Lifetime = lifetime,
@@ -243,7 +248,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return "Generated";
     }
 
-    static string GenerateRegistrationCode(string namespaceName, List<ServiceInfo> services, string extensionMethodName, bool useInternalAccessor)
+    static string GenerateRegistrationCode(
+        string namespaceName, 
+        List<ServiceInfo> services, 
+        string extensionMethodName, 
+        bool useInternalAccessor
+    )
     {
         var sb = new StringBuilder();
         
@@ -295,13 +305,16 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         }
 
         var indent = !string.IsNullOrEmpty(service.Category) ? "    " : "";
+        var tryAdd = service.TryAdd ? "Try" : "";
 
         if (service.IsOpenGeneric)
         {
             // Convert full generic type names to open generic syntax for typeof()
             var openGenericClassName = ConvertToOpenGenericSyntax(service.FullClassName, service.GenericArity);
-            var openGenericInterfaces = service.Interfaces.Select(i => ConvertToOpenGenericSyntax(i, GetGenericArityFromTypeName(i))).ToList();
-
+            var openGenericInterfaces = service.Interfaces
+                .Select(i => ConvertToOpenGenericSyntax(i, GetGenericArityFromTypeName(i)))
+                .ToList();
+            
             // Open generic registration using typeof()
             if (service.KeyedName != null)
             {
@@ -309,17 +322,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
                 else
                 {
                     // Multiple interfaces - register as implementation only for keyed services
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
             }
             else
@@ -328,19 +341,19 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
                 }
                 else
                 {
                     // Multiple interfaces - register for each interface
                     for (int i = 0; i < service.Interfaces.Count; i++)
                     {
-                        sb.AppendLine($"        {indent}services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
+                        sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
                     }
                 }
             }
@@ -354,12 +367,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
                 }
                 else
                 {
@@ -374,12 +387,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}<global::{service.FullClassName}>();");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{service.FullClassName}>();");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
                 }
                 else
                 {
@@ -447,4 +460,5 @@ class ServiceInfo
     public List<string> Interfaces { get; set; } = [];
     public bool IsOpenGeneric { get; set; } = false;
     public int GenericArity { get; set; } = 0;
+    public bool TryAdd { get; set; }
 }
