@@ -6,6 +6,11 @@ namespace Shiny.Extensions.DependencyInjection;
 public class ServiceAttribute(ServiceLifetime lifetime) : Attribute
 {
     /// <summary>
+    /// If your service implements multiple interfaces, you can specify the specific interface you want it implemented with instead
+    /// </summary>
+    public Type? Type { get; set; }
+    
+    /// <summary>
     /// The keyed service name to use for this service
     /// </summary>
     public string? KeyedName { get; set; }

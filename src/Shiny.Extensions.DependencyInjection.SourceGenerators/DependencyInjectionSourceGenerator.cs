@@ -92,6 +92,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         string? keyedName = null;
         string? category = null;
         bool isTryAdd = false;
+        string? specificType = null;
 
         // Determine lifetime based on the specific attribute type
         var attributeTypeName = attributeContainingTypeSymbol.ToDisplayString();
@@ -129,10 +130,14 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 }
             }
 
-            // Extract named arguments (KeyedName, Category, TryAdd)
+            // Extract named arguments (Type, KeyedName, Category, TryAdd)
             foreach (var namedArg in attributeData.NamedArguments)
             {
-                if (namedArg is { Key: "KeyedName", Value.Value: string keyedNameValue })
+                if (namedArg is { Key: "Type", Value.Value: INamedTypeSymbol typeValue })
+                {
+                    specificType = typeValue.ToDisplayString();
+                }
+                else if (namedArg is { Key: "KeyedName", Value.Value: string keyedNameValue })
                 {
                     keyedName = keyedNameValue;
                 }
@@ -189,6 +194,35 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             .Where(i => !i.ToDisplayString().StartsWith("System."))
             .Select(i => i.ToDisplayString())
             .ToList();
+
+        // If a specific type is specified, use only that type (if it's implemented by the service)
+        if (!string.IsNullOrEmpty(specificType))
+        {
+            // Check if the specific type is implemented by the service
+            var implementsSpecificType = interfaces.Contains(specificType) || 
+                                       typeSymbol.ToDisplayString() == specificType;
+            
+            if (implementsSpecificType)
+            {
+                // If it's the implementation type itself, register as implementation only
+                if (typeSymbol.ToDisplayString() == specificType)
+                {
+                    interfaces = [];
+                }
+                else
+                {
+                    // Use only the specified interface
+                    interfaces = [specificType];
+                }
+            }
+            else
+            {
+                // Specific type not found - this could be a configuration error
+                // For now, we'll continue with all interfaces but could add a diagnostic
+                // in the future
+            }
+        }
+
         var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
 
         // Check if this is an open generic type (has type parameters)
@@ -206,7 +240,8 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             Category = category,
             Interfaces = interfaces,
             IsOpenGeneric = isOpenGeneric,
-            GenericArity = genericArity
+            GenericArity = genericArity,
+            SpecificType = specificType
         };
     }
 
@@ -489,4 +524,5 @@ class ServiceInfo
     public bool IsOpenGeneric { get; set; } = false;
     public int GenericArity { get; set; } = 0;
     public bool TryAdd { get; set; }
+    public string? SpecificType { get; set; }
 }

@@ -1629,6 +1629,68 @@ public class DependencyInjectionSourceGeneratorTests
         return TestHelper.Verify(source);
     }
 
+    [Fact]
+    public Task GeneratesForServiceWithSpecificType()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IService1
+                {
+                    void Method1();
+                }
+
+                public interface IService2
+                {
+                    void Method2();
+                }
+
+                [Service(ServiceLifetime.Singleton, Type = typeof(IService1))]
+                public class MyService : IService1, IService2
+                {
+                    public void Method1() { }
+                    public void Method2() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForNewAttributeWithSpecificType()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IService1
+                {
+                    void Method1();
+                }
+
+                public interface IService2
+                {
+                    void Method2();
+                }
+
+                [Singleton(Type = typeof(IService2), KeyedName = "MyKey")]
+                public class MyService : IService1, IService2
+                {
+                    public void Method1() { }
+                    public void Method2() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
     static class TestHelper
     {
         public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)
