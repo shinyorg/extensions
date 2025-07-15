@@ -60,9 +60,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 var attributeContainingTypeSymbol = attributeSymbol.ContainingType;
                 var fullName = attributeContainingTypeSymbol.ToDisplayString();
 
-                if (fullName == "Shiny.Extensions.DependencyInjection.ServiceAttribute")
+                // Check if the attribute is ServiceAttribute or inherits from it
+                if (IsServiceAttributeOrDerived(attributeContainingTypeSymbol))
                 {
-                    return ExtractServiceInfo(context, typeDeclaration, attribute);
+                    return ExtractServiceInfo(context, typeDeclaration, attribute, attributeContainingTypeSymbol);
                 }
             }
         }
@@ -70,7 +71,19 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return null;
     }
 
-    static ServiceInfo? ExtractServiceInfo(GeneratorSyntaxContext context, TypeDeclarationSyntax typeDeclaration, AttributeSyntax attribute)
+    static bool IsServiceAttributeOrDerived(INamedTypeSymbol attributeType)
+    {
+        var current = attributeType;
+        while (current != null)
+        {
+            if (current.ToDisplayString() == "Shiny.Extensions.DependencyInjection.ServiceAttribute")
+                return true;
+            current = current.BaseType;
+        }
+        return false;
+    }
+
+    static ServiceInfo? ExtractServiceInfo(GeneratorSyntaxContext context, TypeDeclarationSyntax typeDeclaration, AttributeSyntax attribute, INamedTypeSymbol attributeContainingTypeSymbol)
     {
         var typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration) as INamedTypeSymbol;
         if (typeSymbol is null) return null;
@@ -80,15 +93,29 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         string? category = null;
         bool isTryAdd = false;
 
-        // Get the attribute symbol to access property values
-        // var attributeSymbol = context.SemanticModel.GetSymbolInfo(attribute).Symbol as IMethodSymbol;
-        var attributeData = typeSymbol.GetAttributes()
-            .FirstOrDefault(ad => ad.AttributeClass?.ToDisplayString() == "Shiny.Extensions.DependencyInjection.ServiceAttribute");
+        // Determine lifetime based on the specific attribute type
+        var attributeTypeName = attributeContainingTypeSymbol.ToDisplayString();
+        lifetime = attributeTypeName switch
+        {
+            "Shiny.Extensions.DependencyInjection.SingletonAttribute" => "Singleton",
+            "Shiny.Extensions.DependencyInjection.ScopedAttribute" => "Scoped",
+            "Shiny.Extensions.DependencyInjection.TransientAttribute" => "Transient",
+            _ => "Singleton" // Default for base ServiceAttribute
+        };
+
+        // Find the matching attribute data (could be ServiceAttribute or any derived attribute)
+        var attributeData = typeSymbol
+            .GetAttributes()
+            .FirstOrDefault(ad => 
+                ad.AttributeClass != null && 
+                IsServiceAttributeOrDerived(ad.AttributeClass)
+            );
 
         if (attributeData != null)
         {
-            // Extract lifetime from constructor argument
-            if (attributeData.ConstructorArguments.Length > 0)
+            // For base ServiceAttribute, extract lifetime from constructor argument
+            if (attributeTypeName == "Shiny.Extensions.DependencyInjection.ServiceAttribute" && 
+                attributeData.ConstructorArguments.Length > 0)
             {
                 var lifetimeValue = attributeData.ConstructorArguments[0].Value;
                 if (lifetimeValue is int enumValue)
@@ -102,6 +129,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 }
             }
 
+            // Extract named arguments (KeyedName, Category, TryAdd)
             foreach (var namedArg in attributeData.NamedArguments)
             {
                 if (namedArg is { Key: "KeyedName", Value.Value: string keyedNameValue })

@@ -22,16 +22,16 @@ public class ServiceAttribute(ServiceLifetime lifetime) : Attribute
 }
 
 
-// public class SingletonAttribute : ServiceAttribute
-// {
-//     public SingletonAttribute() : base(ServiceLifetime.Singleton) { }
-// }
-//
-// public class ScopedAttribute : ServiceAttribute
-// {
-//     public ScopedAttribute() : base(ServiceLifetime.Scoped) { }
-// }
-// public class TransientAttribute : ServiceAttribute
-// {
-//     public TransientAttribute() : base(ServiceLifetime.Transient) { }
-// }
+public class SingletonAttribute : ServiceAttribute
+{
+    public SingletonAttribute() : base(ServiceLifetime.Singleton) { }
+}
+
+public class ScopedAttribute : ServiceAttribute
+{
+    public ScopedAttribute() : base(ServiceLifetime.Scoped) { }
+}
+public class TransientAttribute : ServiceAttribute
+{
+    public TransientAttribute() : base(ServiceLifetime.Transient) { }
+}
