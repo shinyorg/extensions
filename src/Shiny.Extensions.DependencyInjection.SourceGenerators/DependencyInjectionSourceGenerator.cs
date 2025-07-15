@@ -60,9 +60,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 var attributeContainingTypeSymbol = attributeSymbol.ContainingType;
                 var fullName = attributeContainingTypeSymbol.ToDisplayString();
 
-                if (fullName == "Shiny.Extensions.DependencyInjection.ServiceAttribute")
+                // Check if the attribute is ServiceAttribute or inherits from it
+                if (IsServiceAttributeOrDerived(attributeContainingTypeSymbol))
                 {
-                    return ExtractServiceInfo(context, typeDeclaration, attribute);
+                    return ExtractServiceInfo(context, typeDeclaration, attribute, attributeContainingTypeSymbol);
                 }
             }
         }
@@ -70,7 +71,19 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return null;
     }
 
-    static ServiceInfo? ExtractServiceInfo(GeneratorSyntaxContext context, TypeDeclarationSyntax typeDeclaration, AttributeSyntax attribute)
+    static bool IsServiceAttributeOrDerived(INamedTypeSymbol attributeType)
+    {
+        var current = attributeType;
+        while (current != null)
+        {
+            if (current.ToDisplayString() == "Shiny.Extensions.DependencyInjection.ServiceAttribute")
+                return true;
+            current = current.BaseType;
+        }
+        return false;
+    }
+
+    static ServiceInfo? ExtractServiceInfo(GeneratorSyntaxContext context, TypeDeclarationSyntax typeDeclaration, AttributeSyntax attribute, INamedTypeSymbol attributeContainingTypeSymbol)
     {
         var typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration) as INamedTypeSymbol;
         if (typeSymbol is null) return null;
@@ -78,16 +91,32 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var lifetime = "Singleton"; // default
         string? keyedName = null;
         string? category = null;
+        bool isTryAdd = false;
+        string? specificType = null;
 
-        // Get the attribute symbol to access property values
-        var attributeSymbol = context.SemanticModel.GetSymbolInfo(attribute).Symbol as IMethodSymbol;
-        var attributeData = typeSymbol.GetAttributes()
-            .FirstOrDefault(ad => ad.AttributeClass?.ToDisplayString() == "Shiny.Extensions.DependencyInjection.ServiceAttribute");
+        // Determine lifetime based on the specific attribute type
+        var attributeTypeName = attributeContainingTypeSymbol.ToDisplayString();
+        lifetime = attributeTypeName switch
+        {
+            "Shiny.Extensions.DependencyInjection.SingletonAttribute" => "Singleton",
+            "Shiny.Extensions.DependencyInjection.ScopedAttribute" => "Scoped",
+            "Shiny.Extensions.DependencyInjection.TransientAttribute" => "Transient",
+            _ => "Singleton" // Default for base ServiceAttribute
+        };
+
+        // Find the matching attribute data (could be ServiceAttribute or any derived attribute)
+        var attributeData = typeSymbol
+            .GetAttributes()
+            .FirstOrDefault(ad => 
+                ad.AttributeClass != null && 
+                IsServiceAttributeOrDerived(ad.AttributeClass)
+            );
 
         if (attributeData != null)
         {
-            // Extract lifetime from constructor argument
-            if (attributeData.ConstructorArguments.Length > 0)
+            // For base ServiceAttribute, extract lifetime from constructor argument
+            if (attributeTypeName == "Shiny.Extensions.DependencyInjection.ServiceAttribute" && 
+                attributeData.ConstructorArguments.Length > 0)
             {
                 var lifetimeValue = attributeData.ConstructorArguments[0].Value;
                 if (lifetimeValue is int enumValue)
@@ -101,16 +130,24 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 }
             }
 
-            // Extract KeyedName and Category from named arguments (properties)
+            // Extract named arguments (Type, KeyedName, Category, TryAdd)
             foreach (var namedArg in attributeData.NamedArguments)
             {
-                if (namedArg.Key == "KeyedName" && namedArg.Value.Value is string keyedNameValue)
+                if (namedArg is { Key: "Type", Value.Value: INamedTypeSymbol typeValue })
+                {
+                    specificType = typeValue.ToDisplayString();
+                }
+                else if (namedArg is { Key: "KeyedName", Value.Value: string keyedNameValue })
                 {
                     keyedName = keyedNameValue;
                 }
-                else if (namedArg.Key == "Category" && namedArg.Value.Value is string categoryValue)
+                else if (namedArg is { Key: "Category", Value.Value: string categoryValue })
                 {
                     category = categoryValue;
+                }
+                else if (namedArg is { Key: "TryAdd", Value.Value: bool tryAddValue })
+                {
+                    isTryAdd = tryAddValue;
                 }
             }
         }
@@ -157,6 +194,35 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             .Where(i => !i.ToDisplayString().StartsWith("System."))
             .Select(i => i.ToDisplayString())
             .ToList();
+
+        // If a specific type is specified, use only that type (if it's implemented by the service)
+        if (!string.IsNullOrEmpty(specificType))
+        {
+            // Check if the specific type is implemented by the service
+            var implementsSpecificType = interfaces.Contains(specificType) || 
+                                       typeSymbol.ToDisplayString() == specificType;
+            
+            if (implementsSpecificType)
+            {
+                // If it's the implementation type itself, register as implementation only
+                if (typeSymbol.ToDisplayString() == specificType)
+                {
+                    interfaces = [];
+                }
+                else
+                {
+                    // Use only the specified interface
+                    interfaces = [specificType];
+                }
+            }
+            else
+            {
+                // Specific type not found - this could be a configuration error
+                // For now, we'll continue with all interfaces but could add a diagnostic
+                // in the future
+            }
+        }
+
         var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
 
         // Check if this is an open generic type (has type parameters)
@@ -166,6 +232,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return new ServiceInfo
         {
             ClassName = typeSymbol.Name,
+            TryAdd = isTryAdd,
             FullClassName = typeSymbol.ToDisplayString(),
             Namespace = namespaceName,
             Lifetime = lifetime,
@@ -173,7 +240,8 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             Category = category,
             Interfaces = interfaces,
             IsOpenGeneric = isOpenGeneric,
-            GenericArity = genericArity
+            GenericArity = genericArity,
+            SpecificType = specificType
         };
     }
 
@@ -243,7 +311,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return "Generated";
     }
 
-    static string GenerateRegistrationCode(string namespaceName, List<ServiceInfo> services, string extensionMethodName, bool useInternalAccessor)
+    static string GenerateRegistrationCode(
+        string namespaceName, 
+        List<ServiceInfo> services, 
+        string extensionMethodName, 
+        bool useInternalAccessor
+    )
     {
         var sb = new StringBuilder();
         
@@ -295,13 +368,16 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         }
 
         var indent = !string.IsNullOrEmpty(service.Category) ? "    " : "";
+        var tryAdd = service.TryAdd ? "Try" : "";
 
         if (service.IsOpenGeneric)
         {
             // Convert full generic type names to open generic syntax for typeof()
             var openGenericClassName = ConvertToOpenGenericSyntax(service.FullClassName, service.GenericArity);
-            var openGenericInterfaces = service.Interfaces.Select(i => ConvertToOpenGenericSyntax(i, GetGenericArityFromTypeName(i))).ToList();
-
+            var openGenericInterfaces = service.Interfaces
+                .Select(i => ConvertToOpenGenericSyntax(i, GetGenericArityFromTypeName(i)))
+                .ToList();
+            
             // Open generic registration using typeof()
             if (service.KeyedName != null)
             {
@@ -309,17 +385,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
                 else
                 {
                     // Multiple interfaces - register as implementation only for keyed services
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
                 }
             }
             else
@@ -328,19 +404,19 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
                 }
                 else
                 {
                     // Multiple interfaces - register for each interface
                     for (int i = 0; i < service.Interfaces.Count; i++)
                     {
-                        sb.AppendLine($"        {indent}services.Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
+                        sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
                     }
                 }
             }
@@ -354,12 +430,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
                 }
                 else
                 {
@@ -374,12 +450,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (service.Interfaces.Count == 0)
                 {
                     // Implementation only
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}<global::{service.FullClassName}>();");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{service.FullClassName}>();");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
                     // Single interface
-                    sb.AppendLine($"        {indent}services.Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
                 }
                 else
                 {
@@ -447,4 +523,6 @@ class ServiceInfo
     public List<string> Interfaces { get; set; } = [];
     public bool IsOpenGeneric { get; set; } = false;
     public int GenericArity { get; set; } = 0;
+    public bool TryAdd { get; set; }
+    public string? SpecificType { get; set; }
 }

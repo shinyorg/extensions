@@ -1528,6 +1528,169 @@ public class DependencyInjectionSourceGeneratorTests
         return TestHelper.Verify(source);
     }
 
+    [Fact]
+    public Task GeneratesForSingletonAttribute()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                [Singleton]
+                public class MySingletonService
+                {
+                    public string GetValue() => "Singleton";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForScopedAttribute()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Scoped]
+                public class MyScopedService : IMyService
+                {
+                    public string GetValue() => "Scoped";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForTransientAttribute()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Transient]
+                public class MyTransientService : IMyService
+                {
+                    public string GetValue() => "Transient";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForNewAttributesWithProperties()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IMyService
+                {
+                    string GetValue();
+                }
+
+                [Singleton(KeyedName = "SingletonKey", Category = "Core")]
+                public class MySingletonService : IMyService
+                {
+                    public string GetValue() => "Singleton with properties";
+                }
+
+                [Scoped(TryAdd = true)]
+                public class MyScopedService : IMyService
+                {
+                    public string GetValue() => "Scoped with TryAdd";
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForServiceWithSpecificType()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IService1
+                {
+                    void Method1();
+                }
+
+                public interface IService2
+                {
+                    void Method2();
+                }
+
+                [Service(ServiceLifetime.Singleton, Type = typeof(IService1))]
+                public class MyService : IService1, IService2
+                {
+                    public void Method1() { }
+                    public void Method2() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
+    [Fact]
+    public Task GeneratesForNewAttributeWithSpecificType()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny.Extensions.DependencyInjection;
+
+            namespace TestNamespace
+            {
+                public interface IService1
+                {
+                    void Method1();
+                }
+
+                public interface IService2
+                {
+                    void Method2();
+                }
+
+                [Singleton(Type = typeof(IService2), KeyedName = "MyKey")]
+                public class MyService : IService1, IService2
+                {
+                    public void Method1() { }
+                    public void Method2() { }
+                }
+            }
+            """;
+
+        return TestHelper.Verify(source);
+    }
+
     static class TestHelper
     {
         public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)

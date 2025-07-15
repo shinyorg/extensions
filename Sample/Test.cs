@@ -22,7 +22,7 @@ namespace Sample
     public class KeyedImplementationOnly;
 
 
-    [Service(ServiceLifetime.Singleton)]
+    [Service(ServiceLifetime.Singleton, TryAdd = true)]
     public class StandardImplementation : IStandardInterface;
 
     [Service(ServiceLifetime.Scoped, KeyedName = "Standard")]
@@ -35,7 +35,7 @@ namespace Sample
     public class ScopedMultipleImplementation : IStandardInterface, IStandardInterface2;
 
 
-    [Service(ServiceLifetime.Scoped, KeyedName = "KeyedGeneric")]
+    [Service(ServiceLifetime.Scoped, KeyedName = "KeyedGeneric", TryAdd = true)]
     public class TestGeneric<T1, T2>
     {
         public T1 Value1 { get; set; }
