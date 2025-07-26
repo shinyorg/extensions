@@ -19,7 +19,10 @@ public partial class StoreTests(ITestOutputHelper output) : IDisposable
             yield return [new SecureKeyValueStore(serializer)];
             yield return [new SettingsKeyValueStore(serializer)];
 #endif
-            yield return [new MemoryKeyValueStore()];
+            yield return [
+                new MemoryKeyValueStore()
+                // new FileKeyValueStore()
+            ];
         }
     }
 

@@ -1,11 +1,12 @@
 ﻿using System.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace Shiny.Extensions.Stores.Infrastructure;
 
 
 public class ObjectStoreBinder(
-    IKeyValueStoreFactory factory 
-    // ILogger<ObjectStoreBinder>? logger
+    IKeyValueStoreFactory factory,
+    ILogger<ObjectStoreBinder>? logger = null
 ) : IObjectStoreBinder, IDisposable
 {
     readonly object syncLock = new();
@@ -41,9 +42,9 @@ public class ObjectStoreBinder(
         try
         {
             var reflector = npc.GetReflector(true)!;
-            if (reflector.Properties.Length == 0)
+            if (reflector.Properties.Count(x => x.HasSetter) == 0)
             {
-                // logger?.BindInfo("Skipped (no get/set properties)", npc.GetType()!.FullName!, store.Alias);
+                logger?.LogDebug("Skipped Binding {ObjType} (no get/set properties) on Alias {Alias}", npc.GetType()!.FullName!, store.Alias);
                 return;
             }
 
@@ -60,7 +61,7 @@ public class ObjectStoreBinder(
                     }
                     catch (Exception ex)
                     {
-                        // logger?.PropertyBindError(ex, npc.GetType().FullName!, prop.Name);
+                        logger?.LogError(ex, "Failed to bind {Type}.{PropertyName} with Value '{Value}", npc.GetType().FullName!, prop.Name, value);
                     }
                 }
             }
@@ -72,11 +73,11 @@ public class ObjectStoreBinder(
             }
 
             npc.PropertyChanged += this.OnPropertyChanged;
-            // logger?.BindInfo("Success", npc.GetType().FullName!, store.Alias);
+            logger?.LogDebug("NPC Service {Type} has been bound to store '{Alias}", npc.GetType().FullName!, store.Alias);
         }
         catch (Exception ex)
         {
-            // logger?.BindError(ex, npc?.GetType().FullName ?? "Unknown", store.Alias);
+            logger?.LogDebug(ex, "NPC Service {Type} failed to been bound to store '{Alias}", npc.GetType().FullName!, store?.Alias ?? "Unknown");
         }
     }
 
@@ -108,13 +109,47 @@ public class ObjectStoreBinder(
     {
         if (sender == null)
         {
-            // this.logger.LogDebug("Null sender");
+            logger?.LogDebug("Null sender");
             return;
         }
 
-        var reflector = sender.GetReflector(true)!;
+        if (String.IsNullOrWhiteSpace(args.PropertyName))
+        {
+            logger?.LogDebug("Property name is null or empty - binding all properties for {Type}", sender.GetType().FullName);
+            this.BindAllProperties(sender);
+        }
+        else
+        {
+            this.BindSpecificProperty(sender, args.PropertyName);
+        }
+    }
 
-        var prop = reflector.TryGetPropertyInfo(args.PropertyName);
+    
+    void BindAllProperties(object sender)
+    {
+        var reflector = sender.GetReflector(true)!;
+        lock (this.syncLock)
+        {
+            if (!this.bindings.TryGetValue(sender, out var binding))
+                throw new ArgumentException("No key/value store found for current binding object - " + sender.GetType().FullName);
+
+            foreach (var prop in reflector.Properties)
+            {
+                if (prop.HasSetter)
+                {
+                    var key = GetBindingKey(sender.GetType(), prop.Name);
+                    var value = reflector[prop.Name];
+                    binding.SetOrRemove(key, value);
+                }
+            }
+        }
+    }
+    
+
+    void BindSpecificProperty(object sender, string propertyName)
+    {
+        var reflector = sender.GetReflector(true)!;
+        var prop = reflector.TryGetPropertyInfo(propertyName);
         if (prop != null)
         {
             var key = GetBindingKey(sender.GetType(), prop.Name);
