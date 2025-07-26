@@ -5,27 +5,6 @@ public static class StoreExtensions
 {
     static readonly object syncLock = new object();
 
-
-    /// <summary>
-    /// If obj is null or equivalent to the default for the object type
-    /// </summary>
-    /// <param name="obj"></param>
-    /// <returns></returns>
-    internal static bool IsNullOrDefault(this object? obj)
-    {
-        if (obj == null)
-            return true;
-    
-        var type = obj.GetType();
-        if (type.IsValueType)
-        {
-            var result = Activator.CreateInstance(type).Equals(obj);
-            return result;
-        }
-        return false;
-    }
-
-    
     /// <summary>
     /// If the value is null or default for the type, it will remove the key from the store - otherwise it will store it
     /// </summary>
@@ -34,7 +13,7 @@ public static class StoreExtensions
     /// <param name="value"></param>
     public static void SetOrRemove(this IKeyValueStore store, string key, object? value)
     {
-        if (value.IsNullOrDefault())
+        if (value == null)
             store.Remove(key);
         else
             store.Set(key, value!);
