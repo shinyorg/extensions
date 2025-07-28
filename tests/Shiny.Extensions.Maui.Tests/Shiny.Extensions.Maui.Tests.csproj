@@ -9,6 +9,7 @@
         <SingleProject>true</SingleProject>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
         <MauiVersion>9.0.90</MauiVersion>
 
         <ApplicationTitle>Shiny.Extensions.Maui.Tests</ApplicationTitle>

@@ -85,8 +85,11 @@ class RichObject
 [Reflector]
 partial class AppSettings2 : ObservableObject
 {
-    [ObservableProperty] bool isEnabled = true;
-    [ObservableProperty] RichObject2? richObject;
+    [ObservableProperty] 
+    public partial bool IsEnabled { get; set; } = true;
+    
+    [ObservableProperty] 
+    public partial RichObject2? RichObject { get; set; }
 }
 
 [Reflector]
