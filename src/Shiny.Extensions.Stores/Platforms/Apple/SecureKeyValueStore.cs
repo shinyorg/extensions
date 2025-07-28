@@ -7,7 +7,7 @@ public class SecureKeyValueStore(ISerializer serializer) : IKeyValueStore
 {
     readonly object syncLock = new();
 
-    public string Service { get; set; }//= $"{platform.AppIdentifier}.secure";
+    public string Service { get; set; } = $"{NSBundle.MainBundle.BundleIdentifier}.secure";
     public SecAccessible DefaultAccessible { get; set; } = SecAccessible.Always;
 
 
