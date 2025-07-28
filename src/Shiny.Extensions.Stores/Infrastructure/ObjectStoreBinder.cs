@@ -18,7 +18,7 @@ public class ObjectStoreBinder(
     {
         IKeyValueStore? store = null;
 
-        if (keyValueStoreAlias != null)
+        if (!String.IsNullOrWhiteSpace(keyValueStoreAlias))
         {
             store = factory.GetStore(keyValueStoreAlias);
         }
@@ -45,35 +45,45 @@ public class ObjectStoreBinder(
             if (reflector.Properties.Count(x => x.HasSetter) == 0)
             {
                 logger?.LogDebug("Skipped Binding {ObjType} (no get/set properties) on Alias {Alias}", npc.GetType()!.FullName!, store.Alias);
-                return;
             }
-
-            foreach (var prop in reflector.Properties)
+            else
             {
-                var key = GetBindingKey(npc.GetType(), prop.Name);
-
-                if (store.Contains(key))
+                foreach (var prop in reflector.Properties)
                 {
-                    var value = store.Get(prop.Type, key);
-                    try
+                    var key = GetBindingKey(npc.GetType(), prop.Name);
+
+                    if (store.Contains(key))
                     {
-                        reflector.SetValue(prop.Name, value);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger?.LogError(ex, "Failed to bind {Type}.{PropertyName} with Value '{Value}", npc.GetType().FullName!, prop.Name, value);
+                        var value = store.Get(prop.Type, key);
+                        try
+                        {
+                            reflector.SetValue(prop.Name, value);
+                        }
+                        catch (Exception exception)
+                        {
+                            logger?.LogError(
+                                exception, 
+                                "Failed to bind {Type}.{PropertyName} with Value '{Value}",
+                                npc.GetType().FullName!, 
+                                prop.Name, value
+                            );
+                        }
                     }
                 }
-            }
-            lock (this.syncLock)
-            {
-                // set these before npc hook
-                this.boundObjects.Add(npc);
-                this.bindings.Add(npc, store);
-            }
 
-            npc.PropertyChanged += this.OnPropertyChanged;
-            logger?.LogDebug("NPC Service {Type} has been bound to store '{Alias}", npc.GetType().FullName!, store.Alias);
+                lock (this.syncLock)
+                {
+                    // set these before npc hook
+                    this.boundObjects.Add(npc);
+                    this.bindings.Add(npc, store);
+                }
+
+                npc.PropertyChanged += this.OnPropertyChanged;
+                logger?.LogDebug("NPC Service {Type} has been bound to store '{Alias}", 
+                    npc.GetType().FullName!,
+                    store.Alias
+                );
+            }
         }
         catch (Exception ex)
         {
@@ -120,6 +130,7 @@ public class ObjectStoreBinder(
         }
         else
         {
+            logger?.LogDebug("Binding property {PropertyName} to {Type}", args.PropertyName, sender.GetType().FullName);
             this.BindSpecificProperty(sender, args.PropertyName);
         }
     }
@@ -127,9 +138,10 @@ public class ObjectStoreBinder(
     
     void BindAllProperties(object sender)
     {
-        var reflector = sender.GetReflector(true)!;
         lock (this.syncLock)
         {
+            var reflector = sender.GetReflector(true)!;
+            
             if (!this.bindings.TryGetValue(sender, out var binding))
                 throw new ArgumentException("No key/value store found for current binding object - " + sender.GetType().FullName);
 
@@ -150,7 +162,16 @@ public class ObjectStoreBinder(
     {
         var reflector = sender.GetReflector(true)!;
         var prop = reflector.TryGetPropertyInfo(propertyName);
-        if (prop != null)
+        
+        if (prop == null)
+        {
+            logger?.LogWarning(
+                "Property '{PropertyName}' not found on {Type}", 
+                propertyName, 
+                sender.GetType().FullName
+            );
+        }
+        else
         {
             var key = GetBindingKey(sender.GetType(), prop.Name);
             var value = reflector[prop.Name];

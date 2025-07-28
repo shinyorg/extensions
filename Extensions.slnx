@@ -11,9 +11,11 @@
     <File Path="src\Directory.build.props" />
     <File Path="src\Directory.packages.props" />
     <File Path="readme.md" />
+    <File Path="nuget.config" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Shiny.Extensions.Maui.Tests\Shiny.Extensions.Maui.Tests.csproj" Type="Classic C#" />
     <Project Path="tests\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj" Type="Classic C#" />
   </Folder>
   <Project Path="Sample\Sample.csproj" Type="Classic C#" />
