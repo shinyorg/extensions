@@ -1,0 +1,18 @@
+﻿@page "/"
+@using Shiny.Extensions.Device
+@inject IBattery Battery
+@inject IConnectivity Connectivity
+@inject ICultureInfo Culture
+@inject IDeviceInfo Device
+@inject ITimeZone TZ
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world!</h1>
+
+@Culture.Current.DisplayName
+@Device.Manufacturer
+@Device.Model
+@Device.OperatingSystem
+@Device.OperatingSystemVersion
+@TZ.Current.DisplayName

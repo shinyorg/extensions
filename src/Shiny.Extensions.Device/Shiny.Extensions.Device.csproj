@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <PropertyGroup>
+        <TargetFrameworks>$(BaseTargetFramework);$(BaseTargetFramework)-ios;$(BaseTargetFramework)-android</TargetFrameworks>
+        <TargetFrameworks Condition="'$(OS)' == 'Windows'">$(TargetFrameworks);$(BaseTargetFramework)-windows</TargetFrameworks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(TargetFramework)' == '$(BaseTargetFramework)'">
+        <DefineConstants>$(DefineConstants);WEB</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(TargetFramework)' != '$(BaseTargetFramework)'">
+        <DefineConstants>$(DefineConstants);APP</DefineConstants>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="Platforms\**\*.cs"/>
+        <Compile Remove="Platforms\**\*.cs"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' != '$(BaseTargetFramework)'">
+        <PackageReference Include="Microsoft.Maui.Essentials"/>
+        <Compile Include="Platforms\App\**\*.cs"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == '$(BaseTargetFramework)'">
+        <PackageReference Include="UAParser"/>
+        <PackageReference Include="Microsoft.JSInterop" />
+        <Compile Include="Platforms\Web\**\*.cs"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('ios'))">
+        <Compile Include="Platforms\Apple\**\*.cs"/>
+        <Compile Include="Platforms\iOS\**\*.cs"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('maccatalyst'))">
+        <Compile Include="Platforms\Apple\**\*.cs"/>
+        <Compile Include="Platforms\MacCatalyst\**\*.cs"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('android'))">
+        <Compile Include="Platforms\Android\**\*.cs"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('windows'))">
+        <Compile Include="Platforms\Windows\**\*.cs"/>
+    </ItemGroup>
+
+</Project>

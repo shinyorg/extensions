@@ -1,4 +1,9 @@
 ﻿<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples\Sample.Blazor\Sample.Blazor.csproj" Type="Classic C#" />
+    <Project Path="samples\Sample.Maui\Sample.Maui.csproj" Type="Classic C#" />
+    <Project Path="samples\Sample\Sample.csproj" Type="Classic C#" />
+  </Folder>
   <Folder Name="/Solution/">
     <File Path="LICENSE" />
     <File Path="nuget.png" />
@@ -18,9 +23,9 @@
     <Project Path="tests\Shiny.Extensions.Maui.Tests\Shiny.Extensions.Maui.Tests.csproj" Type="Classic C#" />
     <Project Path="tests\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj" Type="Classic C#" />
   </Folder>
-  <Project Path="Sample\Sample.csproj" Type="Classic C#" />
   <Project Path="src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" Type="Classic C#" />
   <Project Path="src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" Type="Classic C#" />
+  <Project Path="src\Shiny.Extensions.Device\Shiny.Extensions.Device.csproj" Type="Classic C#" />
   <Project Path="src\Shiny.Extensions.Stores.Web\Shiny.Extensions.Stores.Web.csproj" Type="Classic C#" />
   <Project Path="src\Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj" Type="Classic C#" />
   <Project Path="src\Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj" Type="Classic C#" />

@@ -1,16 +1,19 @@
 <Project>
-    <PropertyGroup>
-        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0"/>
-        <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0"/>
-        <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0"/>
-        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4"/>
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0"/>
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.7.0"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0"/>
-        <PackageVersion Include="Shiny.Reflector" Version="1.6.1"/>
-        <PackageVersion Include="Nerdbank.GitVersioning" Version="3.7.115"/>
-    </ItemGroup>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.7.0" />
+    <PackageVersion Include="Microsoft.JSInterop" Version="9.0.0" />
+    <PackageVersion Include="Shiny.Reflector" Version="1.6.1" />
+    <PackageVersion Include="Microsoft.Maui.Essentials" Version="9.0.90" />
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.7.115" />
+    <PackageVersion Include="UAParser" Version="3.1.47" />
+  </ItemGroup>
 </Project>
