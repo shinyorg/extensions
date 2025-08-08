@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shiny.Extensions.Stores.Infrastructure;
@@ -10,7 +11,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddShinyStores(this IServiceCollection services)
     {
         services.TryAddSingleton<IKeyValueStoreFactory, KeyValueStoreFactory>();
-        services.TryAddSingleton<ISerializer, DefaultSerializer>();
+        services.TryAddSingleton<ISerializer, DefaultSerializer>(); // TODO: I need json serializer context and better options support here
         services.TryAddSingleton<IObjectStoreBinder, ObjectStoreBinder>();
         
         if (!services.Any(x => x.ImplementationType == typeof(MemoryKeyValueStore)))
@@ -24,6 +25,25 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    
+    /// <summary>
+    /// Configure the System.Text.Json serializer - 
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="configure"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddSysTextJsonSerializer(
+        this IServiceCollection services, 
+        Action<JsonSerializerOptions>? configure = null
+    )
+    {
+        services.AddShinyStores();
+        services.Configure<DefaultSerializer>(serializer =>
+        {
+            configure?.Invoke(serializer.SerializerOptions);
+        });
+        return services;
+    }
 
     /// <summary>
     ///  This will add the implementation for ALL of its interfaces and create a persistent storage binding if INotifyPropertyChanged is implemented

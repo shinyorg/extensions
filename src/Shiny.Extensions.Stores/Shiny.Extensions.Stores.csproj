@@ -16,8 +16,8 @@
 
     <ItemGroup>
         <PackageReference Include="Shiny.Reflector"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
     </ItemGroup>
     
     <ItemGroup>
