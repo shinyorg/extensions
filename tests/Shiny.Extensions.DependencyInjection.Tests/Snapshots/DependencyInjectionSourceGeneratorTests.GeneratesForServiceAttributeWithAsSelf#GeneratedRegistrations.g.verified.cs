@@ -13,7 +13,7 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddTransient<global::TestNamespace.IMyService, global::TestNamespace.MyTransientService>();
+        services.AddScoped<global::TestNamespace.MyServiceWithAsSelf>();
 
         return services;
     }

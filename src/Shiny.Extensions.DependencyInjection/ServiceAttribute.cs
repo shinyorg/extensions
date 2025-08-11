@@ -6,6 +6,11 @@ namespace Shiny.Extensions.DependencyInjection;
 public class ServiceAttribute(ServiceLifetime lifetime) : Attribute
 {
     /// <summary>
+    /// If this set, the service will be registered as itself, rather than the interface it implements.
+    /// </summary>
+    public bool AsSelf { get; set; }
+    
+    /// <summary>
     /// If your service implements multiple interfaces, you can specify the specific interface you want it implemented with instead
     /// </summary>
     public Type? Type { get; set; }
@@ -27,16 +32,7 @@ public class ServiceAttribute(ServiceLifetime lifetime) : Attribute
 }
 
 
-public class SingletonAttribute : ServiceAttribute
-{
-    public SingletonAttribute() : base(ServiceLifetime.Singleton) { }
-}
+public class SingletonAttribute() : ServiceAttribute(ServiceLifetime.Singleton);
 
-public class ScopedAttribute : ServiceAttribute
-{
-    public ScopedAttribute() : base(ServiceLifetime.Scoped) { }
-}
-public class TransientAttribute : ServiceAttribute
-{
-    public TransientAttribute() : base(ServiceLifetime.Transient) { }
-}
+public class ScopedAttribute() : ServiceAttribute(ServiceLifetime.Scoped);
+public class TransientAttribute() : ServiceAttribute(ServiceLifetime.Transient);

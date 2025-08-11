@@ -13,7 +13,10 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddTransient<global::TestNamespace.IMyService, global::TestNamespace.MyTransientService>();
+        services.AddSingleton<global::TestNamespace.IService1, global::TestNamespace.SingletonService>();
+        services.AddScoped<global::TestNamespace.IService2, global::TestNamespace.ScopedService>();
+        services.AddTransient<global::TestNamespace.IService3, global::TestNamespace.TransientService>();
+        services.AddSingleton<global::TestNamespace.AsSelfService>();
 
         return services;
     }

@@ -4,7 +4,7 @@ using global::System.Linq;
 using global::Microsoft.Extensions.DependencyInjection;
 using global::Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Tests;
+namespace TestAssembly;
 
 public static class __GeneratedRegistrations
 {
