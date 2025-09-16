@@ -4,16 +4,16 @@ using global::System.Linq;
 using global::Microsoft.Extensions.DependencyInjection;
 using global::Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace TestAssembly;
+namespace ThisIsMyNamespace;
 
-public static class __GeneratedRegistrations
+internal static class __GeneratedRegistrations
 {
-    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedServices(
+    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddMyServices(
         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
         params string[] categories
     )
     {
-        services.AddTransient<global::TestNamespace.IMyService, global::TestNamespace.MyTransientService>();
+        services.AddSingleton<global::TestNamespace.IMyService, global::TestNamespace.MySingletonService>();
 
         return services;
     }

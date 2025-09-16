@@ -92,7 +92,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         string? keyedName = null;
         string? category = null;
         bool isTryAdd = false;
+        bool asSelf = false;
         string? specificType = null;
+        Location? attributeLocation = null;
 
         // Determine lifetime based on the specific attribute type
         var attributeTypeName = attributeContainingTypeSymbol.ToDisplayString();
@@ -103,6 +105,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             "Shiny.Extensions.DependencyInjection.TransientAttribute" => "Transient",
             _ => "Singleton" // Default for base ServiceAttribute
         };
+
+        // Store the attribute location for potential diagnostic reporting
+        attributeLocation = attribute.GetLocation();
 
         // Find the matching attribute data (could be ServiceAttribute or any derived attribute)
         var attributeData = typeSymbol
@@ -130,7 +135,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 }
             }
 
-            // Extract named arguments (Type, KeyedName, Category, TryAdd)
+            // Extract named arguments (Type, KeyedName, Category, TryAdd, AsSelf)
             foreach (var namedArg in attributeData.NamedArguments)
             {
                 if (namedArg is { Key: "Type", Value.Value: INamedTypeSymbol typeValue })
@@ -148,6 +153,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 else if (namedArg is { Key: "TryAdd", Value.Value: bool tryAddValue })
                 {
                     isTryAdd = tryAddValue;
+                }
+                else if (namedArg is { Key: "AsSelf", Value.Value: bool asSelfValue })
+                {
+                    asSelf = asSelfValue;
                 }
             }
         }
@@ -195,8 +204,13 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             .Select(i => i.ToDisplayString())
             .ToList();
 
+        // If AsSelf is true, register the class directly (no interfaces)
+        if (asSelf)
+        {
+            interfaces = [];
+        }
         // If a specific type is specified, use only that type (if it's implemented by the service)
-        if (!string.IsNullOrEmpty(specificType))
+        else if (!string.IsNullOrEmpty(specificType))
         {
             // Check if the specific type is implemented by the service
             var implementsSpecificType = interfaces.Contains(specificType) || 
@@ -233,6 +247,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         {
             ClassName = typeSymbol.Name,
             TryAdd = isTryAdd,
+            AsSelf = asSelf,
             FullClassName = typeSymbol.ToDisplayString(),
             Namespace = namespaceName,
             Lifetime = lifetime,
@@ -241,7 +256,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             Interfaces = interfaces,
             IsOpenGeneric = isOpenGeneric,
             GenericArity = genericArity,
-            SpecificType = specificType
+            SpecificType = specificType,
+            AttributeLocation = attributeLocation,
+            HasConflictingConfiguration = asSelf && !string.IsNullOrEmpty(specificType)
         };
     }
 
@@ -255,8 +272,28 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 .Cast<ServiceInfo>()
                 .ToList();
 
+        // Report diagnostics for services with conflicting configurations
+        foreach (var service in validServices.Where(s => s.HasConflictingConfiguration))
+        {
+            var descriptor = new DiagnosticDescriptor(
+                "DI001",
+                "Conflicting service registration configuration",
+                "Cannot specify both 'AsSelf = true' and 'Type' property on the same service attribute. Use either 'AsSelf = true' to register the implementation directly, or specify a 'Type' to register a specific interface.",
+                "Usage",
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+            
+            var diagnostic = Diagnostic.Create(descriptor, service.AttributeLocation);
+            context.ReportDiagnostic(diagnostic);
+        }
+
+        // Filter out services with conflicting configurations
+        var validServicesForGeneration = validServices
+            .Where(s => !s.HasConflictingConfiguration)
+            .ToList();
+
         // Remove duplicates by creating a HashSet based on full class name
-        var uniqueServices = validServices
+        var uniqueServices = validServicesForGeneration
             .GroupBy(s => s.FullClassName)
             .Select(g => g.First())
             .ToList();
@@ -264,9 +301,17 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         // Generate a single extension class for all types in the assembly
         var targetNamespace = GetTargetNamespace(compilation, configOptions);
         var extensionMethodName = GetExtensionMethodName(configOptions);
-        var useInternalAccessor = configOptions.GlobalOptions.TryGetValue("build_property.ShinyDIUseInternalAccessor", out var useInternal) && 
-                                  Boolean.TryParse(useInternal, out _);
+        
+        // Debug the internal accessor property
+        var hasInternalProperty = configOptions.GlobalOptions.TryGetValue("build_property.ShinyDIExtensionInternalAccessor", out var useInternal);
+        var parsedSuccessfully = Boolean.TryParse(useInternal, out var result);
+        var useInternalAccessor = hasInternalProperty && parsedSuccessfully && result;
+        
         var source = GenerateRegistrationCode(targetNamespace, uniqueServices, extensionMethodName, useInternalAccessor);
+        
+        // Add debugging info as a separate comment
+        //var debugComment = $"// Debug: hasInternalProperty={hasInternalProperty}, useInternal='{useInternal}', parsedSuccessfully={parsedSuccessfully}, result={result}, useInternalAccessor={useInternalAccessor}";
+        //source += "\n" + debugComment;
         
         context.AddSource("GeneratedRegistrations.g.cs", source);
     }
@@ -348,6 +393,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         sb.AppendLine("        return services;");
         sb.AppendLine("    }");
         sb.AppendLine("}");
+
 
         return sb.ToString();
     }
@@ -525,5 +571,8 @@ class ServiceInfo
     public bool IsOpenGeneric { get; set; } = false;
     public int GenericArity { get; set; } = 0;
     public bool TryAdd { get; set; }
+    public bool AsSelf { get; set; }
     public string? SpecificType { get; set; }
+    public Location? AttributeLocation { get; set; }
+    public bool HasConflictingConfiguration { get; set; }
 }

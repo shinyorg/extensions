@@ -13,7 +13,7 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddTransient<global::TestNamespace.IMyService, global::TestNamespace.MyTransientService>();
+        services.AddSingleton<global::TestNamespace.IMyService, global::TestNamespace.MyMultiInterfaceService>();
 
         return services;
     }
