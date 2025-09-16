@@ -1,9 +1,4 @@
 ﻿<Solution>
-  <Folder Name="/samples/">
-    <Project Path="samples\Sample.Blazor\Sample.Blazor.csproj" Type="Classic C#" />
-    <Project Path="samples\Sample.Maui\Sample.Maui.csproj" Type="Classic C#" />
-    <Project Path="samples\Sample\Sample.csproj" Type="Classic C#" />
-  </Folder>
   <Folder Name="/Solution/">
     <File Path="LICENSE" />
     <File Path="nuget.png" />
@@ -19,6 +14,7 @@
     <File Path="nuget.config" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="samples\Sample\Sample.csproj" Type="Classic C#" />
     <Project Path="tests\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" Type="Classic C#" />
     <Project Path="tests\Shiny.Extensions.Maui.Tests\Shiny.Extensions.Maui.Tests.csproj" Type="Classic C#" />
     <Project Path="tests\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj" Type="Classic C#" />
