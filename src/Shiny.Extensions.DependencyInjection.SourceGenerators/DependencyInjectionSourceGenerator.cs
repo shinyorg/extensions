@@ -214,7 +214,8 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         {
             // Check if the specific type is implemented by the service
             var implementsSpecificType = interfaces.Contains(specificType) || 
-                                       typeSymbol.ToDisplayString() == specificType;
+                                       typeSymbol.ToDisplayString() == specificType ||
+                                       IsBaseClassOf(typeSymbol, specificType);
             
             if (implementsSpecificType)
             {
@@ -222,6 +223,11 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (typeSymbol.ToDisplayString() == specificType)
                 {
                     interfaces = [];
+                }
+                else if (IsBaseClassOf(typeSymbol, specificType))
+                {
+                    // If the specific type is a base class, register as that base class only
+                    interfaces = [specificType];
                 }
                 else
                 {
@@ -556,6 +562,27 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         // Count commas and add 1 to get the number of type parameters
         var commaCount = genericPart.Count(c => c == ',');
         return commaCount + 1;
+    }
+
+    static bool IsBaseClassOf(INamedTypeSymbol derivedType, string baseTypeName)
+    {
+        // Check if any of the base types match the specified type name
+        var current = derivedType.BaseType;
+        while (current != null)
+        {
+            if (current.ToDisplayString() == baseTypeName)
+                return true;
+            current = current.BaseType;
+        }
+
+        // Also check interfaces
+        foreach (var iface in derivedType.AllInterfaces)
+        {
+            if (iface.ToDisplayString() == baseTypeName)
+                return true;
+        }
+
+        return false;
     }
 }
 
