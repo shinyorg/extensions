@@ -1,13 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
-using Shiny.Extensions.DependencyInjection;
-
-// given the following code from a user
 namespace Sample
 {
-    [Service(ServiceLifetime.Singleton)]
+    [Singleton]
     public record MyStandardSingletonRecord : IStandardInterface;
 
-    [Service(ServiceLifetime.Scoped)]
+    [Scoped]
     public record MyStandardScopedRecord;
     
     
@@ -15,27 +11,27 @@ namespace Sample
 
     public interface IStandardInterface2;
 
-    [Service(ServiceLifetime.Singleton)]
+    [Singleton]
     public class ImplementationOnly;
 
-    [Service(ServiceLifetime.Transient, KeyedName = "ImplOnly")]
+    [Transient(KeyedName = "ImplOnly")]
     public class KeyedImplementationOnly;
 
 
-    [Service(ServiceLifetime.Singleton, TryAdd = true)]
+    [Singleton(TryAdd = true)]
     public class StandardImplementation : IStandardInterface;
 
-    [Service(ServiceLifetime.Scoped, KeyedName = "Standard")]
+    [Scoped(KeyedName = "Standard")]
     public class KeyedStandardImplementation : IStandardInterface;
 
-    [Service(ServiceLifetime.Singleton)]
+    [Singleton]
     public class MultipleImplementation : IStandardInterface, IStandardInterface2;
 
-    [Service(ServiceLifetime.Scoped)]
+    [Scoped]
     public class ScopedMultipleImplementation : IStandardInterface, IStandardInterface2;
 
 
-    [Service(ServiceLifetime.Scoped, KeyedName = "KeyedGeneric", TryAdd = true)]
+    [Scoped(KeyedName = "KeyedGeneric", TryAdd = true)]
     public class TestGeneric<T1, T2>
     {
         public T1 Value1 { get; set; }
@@ -43,9 +39,17 @@ namespace Sample
     }
 
 
-    [Service(ServiceLifetime.Singleton, Category = "DEV1")]
+    [Singleton(Category = "DEV1")]
     public class DevCategoryService;
     
-    [Service(ServiceLifetime.Singleton, Category = "PROD")]
+    [Singleton(Category = "PROD")]
     public class ProdCategoryService;
+
+
+    [Singleton(AsSelf = true)]
+    public class AsSelfTest : IStandardInterface;
+    
+    
+    [Singleton(Type = typeof(IStandardInterface2))]
+    public class SpecificTest : IStandardInterface, IStandardInterface2;
 }

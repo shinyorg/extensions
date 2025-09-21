@@ -1,0 +1,23 @@
+﻿{
+  Diagnostics: [
+    {
+      Location: /*
+
+    [Singleton(AsSelf = true, Type = typeof(IMyService))]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    public class ConflictingService : IMyService
+*/
+ : (10,5)-(10,56),
+      Message: Cannot specify both 'AsSelf = true' and 'Type' property on the same service attribute. Use either 'AsSelf = true' to register the implementation directly, or specify a 'Type' to register a specific interface.,
+      Severity: Error,
+      Descriptor: {
+        Id: DI001,
+        Title: Conflicting service registration configuration,
+        MessageFormat: Cannot specify both 'AsSelf = true' and 'Type' property on the same service attribute. Use either 'AsSelf = true' to register the implementation directly, or specify a 'Type' to register a specific interface.,
+        Category: Usage,
+        DefaultSeverity: Error,
+        IsEnabledByDefault: true
+      }
+    }
+  ]
+}

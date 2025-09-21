@@ -13,7 +13,10 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddTransient<global::TestNamespace.IMyService, global::TestNamespace.MyTransientService>();
+        if (categories?.Any(x => x.Equals("MyCategory", global::System.StringComparison.OrdinalIgnoreCase)) == true)
+        {
+            services.AddKeyedScoped<global::TestNamespace.IMyService, global::TestNamespace.MyKeyedCategorizedService>("MyKey");
+        }
 
         return services;
     }
