@@ -4,17 +4,13 @@ using global::System.Linq;
 using global::Microsoft.Extensions.DependencyInjection;
 using global::Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace TestAssembly;
 
-public static class __GeneratedRegistrations
+internal static class __ShinyServicesModule
 {
-    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedServices(
-        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
-        params string[] categories
-    )
+    public static void Run()
     {
-        services.AddSingleton<global::TestNamespace.IMyService, global::TestNamespace.MyMultiInterfaceService>();
-
-        return services;
+        global::Shiny.Extensions.DependencyInjection.Internals.ServiceRegistry.RegisterCallback((services, categories) => {
+            services.AddSingleton<global::TestNamespace.IMyService, global::TestNamespace.MyMultiInterfaceService>();
+        });
     }
 }

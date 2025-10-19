@@ -3,11 +3,4 @@
         <Using Include="Shiny.Extensions.DependencyInjection" />
         <Using Include="Microsoft.Extensions.DependencyInjection" />
     </ItemGroup>
-    
-    <ItemGroup>
-        <CompilerVisibleProperty Include="ShinyDIExtensionMethodName" />
-        <CompilerVisibleProperty Include="RootNamespace" />
-        <CompilerVisibleProperty Include="ShinyDIExtensionNamespace" />
-        <CompilerVisibleProperty Include="ShinyDIExtensionInternalAccessor" />
-    </ItemGroup>
 </Project>

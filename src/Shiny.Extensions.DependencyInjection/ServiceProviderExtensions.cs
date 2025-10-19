@@ -1,10 +1,24 @@
 using Microsoft.Extensions.DependencyInjection;
+using Shiny.Extensions.DependencyInjection.Internals;
 
 namespace Shiny.Extensions.DependencyInjection;
 
 
 public static class ServiceProviderExtensions
 {
+    /// <summary>
+    /// Register any source generated services across ALL libraries that use Shiny.Extensions.DependencyInjection registration
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="categories"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddShinyServiceRegistry(this IServiceCollection services, params IEnumerable<string> categories)
+    {
+        ServiceRegistry.RunCallbacks(services, categories);
+        return services;
+    }
+    
+    
     /// <summary>
     /// Checks if a service collection has a service registered for the specified type
     /// </summary>
