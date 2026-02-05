@@ -1,0 +1,27 @@
+{
+  "name": "shiny-extensions",
+  "version": "1.0.0",
+  "description": "Claude Code plugin for Shiny Extensions - dependency injection with source generators, cross-platform key/value stores, and ASP.NET infrastructure modules for .NET applications",
+  "author": {
+    "name": "Shiny",
+    "email": "hello@shinylib.net",
+    "url": "https://shinylib.net"
+  },
+  "homepage": "https://shinylib.net",
+  "repository": "https://github.com/shinyorg/Shiny.Extensions",
+  "license": "MIT",
+  "keywords": [
+    "dependency-injection",
+    "source-generators",
+    "key-value-store",
+    "dotnet",
+    "maui",
+    "blazor",
+    "aspnet",
+    "persistent-storage",
+    "infrastructure-modules",
+    "aot",
+    "cross-platform"
+  ],
+  "skills": "./skills/"
+}
