@@ -1,6 +1,6 @@
 <Project>
-    <PropertyGroup>
-        <BaseTargetFramework>net9.0</BaseTargetFramework>
+    <PropertyGroup>        
+        <BaseTargetFramework>net10.0</BaseTargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <PackageReadmeFile>readme.md</PackageReadmeFile>
@@ -9,6 +9,8 @@
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/shinyorg/extensions</RepositoryUrl>
         <PackageProjectUrl>https://shinylib.net</PackageProjectUrl>
+
+        <MauiVersion>10.0.30</MauiVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">

@@ -2,14 +2,11 @@
 
     <PropertyGroup>
         <Description>Store anything in a key/value store - Abstractions for iOS, Android and Windows preferences/secure storage</Description>
-        <BaseTfm>net9.0</BaseTfm>
-        <TargetFrameworks>$(BaseTfm)</TargetFrameworks>
-        <TargetFrameworks>$(TargetFrameworks);$(BaseTfm)-android</TargetFrameworks>
-        <TargetFrameworks>$(TargetFrameworks);$(BaseTfm)-ios</TargetFrameworks>
-        <TargetFrameworks>$(TargetFrameworks);$(BaseTfm)-maccatalyst</TargetFrameworks>
-        <TargetFrameworks Condition="'$(OS)' == 'Windows'">$(TargetFrameworks);net9.0-windows</TargetFrameworks>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <TargetFrameworks>$(BaseTargetFramework)</TargetFrameworks>
+        <TargetFrameworks>$(TargetFrameworks);$(BaseTargetFramework)-android</TargetFrameworks>
+        <TargetFrameworks>$(TargetFrameworks);$(BaseTargetFramework)-ios</TargetFrameworks>
+        <TargetFrameworks>$(TargetFrameworks);$(BaseTargetFramework)-maccatalyst</TargetFrameworks>
+        <TargetFrameworks Condition="'$(OS)' == 'Windows'">$(TargetFrameworks);$(BaseTargetFramework)-windows</TargetFrameworks>
         <Description>Store anything in a key/value store - Abstractions for iOS, Android and Windows preferences/secure storage</Description>
         <PackageTags>shiny keyvaluepair stores storage sourcegeneration</PackageTags>
     </PropertyGroup>
