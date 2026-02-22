@@ -8,13 +8,13 @@ namespace Shiny.Extensions.DependencyInjection.Tests;
 
 public static class TestHelper
 {
-    public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)
+    public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null, bool includeAspNetCore = true)
     {
         // Parse the source code
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
 
         // Get all necessary references
-        var references = GetMetadataReferences();
+        var references = GetMetadataReferences(includeAspNetCore);
 
         // Create compilation
         var compilation = CSharpCompilation.Create(
@@ -23,11 +23,12 @@ public static class TestHelper
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        // Create the source generator
-        var generator = new DependencyInjectionSourceGenerator();
+        // Create the source generators
+        var diGenerator = new DependencyInjectionSourceGenerator();
+        var webHostingGenerator = new WebHostingSourceGenerator();
 
-        // Create generator driver
-        var driver = CSharpGeneratorDriver.Create(generator);
+        // Create generator driver with both generators
+        var driver = CSharpGeneratorDriver.Create(diGenerator, webHostingGenerator);
 
         // Configure MSBuild properties if provided
         if (msBuildProperties != null)
@@ -50,7 +51,7 @@ public static class TestHelper
         return Verifier.Verify(runResult).UseDirectory("Snapshots");
     }
 
-    private static List<MetadataReference> GetMetadataReferences()
+    private static List<MetadataReference> GetMetadataReferences(bool includeAspNetCore = true)
     {
         var references = new List<MetadataReference>();
         
@@ -97,6 +98,74 @@ public static class TestHelper
         catch
         {
             // Shiny assembly not available
+        }
+
+        // Add ASP.NET Core references if requested
+        if (includeAspNetCore)
+        {
+            try
+            {
+                // Load Microsoft.AspNetCore.App assemblies
+                var aspNetCoreAssemblies = new[]
+                {
+                    "Microsoft.AspNetCore",
+                    "Microsoft.AspNetCore.Http",
+                    "Microsoft.AspNetCore.Http.Abstractions",
+                    "Microsoft.AspNetCore.Routing",
+                    "Microsoft.AspNetCore.Authentication",
+                    "Microsoft.AspNetCore.Authentication.Abstractions",
+                    "Microsoft.AspNetCore.Authorization",
+                    "Microsoft.AspNetCore.Cors"
+                };
+
+                foreach (var assemblyName in aspNetCoreAssemblies)
+                {
+                    try
+                    {
+                        var assembly = Assembly.Load(assemblyName);
+                        references.Add(MetadataReference.CreateFromFile(assembly.Location));
+                    }
+                    catch
+                    {
+                        // Skip if assembly can't be loaded
+                    }
+                }
+
+                // Add Microsoft.AspNetCore.Builder and Microsoft.Extensions.Hosting which contain WebApplicationBuilder and WebApplication
+                try
+                {
+                    var builderAssembly = Assembly.Load("Microsoft.AspNetCore");
+                    references.Add(MetadataReference.CreateFromFile(builderAssembly.Location));
+                }
+                catch
+                {
+                    // Already added or not available
+                }
+
+                try
+                {
+                    var hostingAssembly = Assembly.Load("Microsoft.Extensions.Hosting");
+                    references.Add(MetadataReference.CreateFromFile(hostingAssembly.Location));
+                }
+                catch
+                {
+                    // Skip if assembly can't be loaded
+                }
+
+                try
+                {
+                    var hostingAbstractionsAssembly = Assembly.Load("Microsoft.Extensions.Hosting.Abstractions");
+                    references.Add(MetadataReference.CreateFromFile(hostingAbstractionsAssembly.Location));
+                }
+                catch
+                {
+                    // Skip if assembly can't be loaded
+                }
+            }
+            catch
+            {
+                // ASP.NET Core assemblies not available
+            }
         }
 
         return references;
