@@ -4,7 +4,7 @@
 var services = new ServiceCollection();
 
 // This should call the generated registration method
-services.AddShinyServiceRegistry();
+services.AddSampleGeneratedServices();
 var serviceProvider = services.BuildServiceProvider();
 
 Console.WriteLine("Services registered successfully!");

@@ -4,16 +4,20 @@ using global::System.Linq;
 using global::Microsoft.Extensions.DependencyInjection;
 using global::Microsoft.Extensions.DependencyInjection.Extensions;
 
+namespace TestAssembly;
 
-internal static class __ShinyServicesModule
+public static class __GeneratedRegistrations
 {
-    public static void Run()
+    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedServices(
+        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
+        params string[] categories
+    )
     {
-        global::Shiny.Extensions.DependencyInjection.Internals.ServiceRegistry.RegisterCallback((services, categories) => {
-            services.AddSingleton<global::TestNamespace.IService1, global::TestNamespace.SingletonService>();
-            services.AddScoped<global::TestNamespace.IService2, global::TestNamespace.ScopedService>();
-            services.AddTransient<global::TestNamespace.IService3, global::TestNamespace.TransientService>();
-            services.AddSingleton<global::TestNamespace.AsSelfService>();
-        });
+        services.AddSingleton<global::TestNamespace.IService1, global::TestNamespace.SingletonService>();
+        services.AddScoped<global::TestNamespace.IService2, global::TestNamespace.ScopedService>();
+        services.AddTransient<global::TestNamespace.IService3, global::TestNamespace.TransientService>();
+        services.AddSingleton<global::TestNamespace.AsSelfService>();
+
+        return services;
     }
 }
