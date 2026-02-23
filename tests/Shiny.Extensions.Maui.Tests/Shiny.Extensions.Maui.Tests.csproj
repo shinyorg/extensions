@@ -52,7 +52,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj"/>
         <ProjectReference Include="..\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj"/>
     </ItemGroup>
 
