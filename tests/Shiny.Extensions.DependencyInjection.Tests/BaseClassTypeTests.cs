@@ -29,7 +29,7 @@ public class BaseClassTypeTests
             }
             """;
         
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class BaseClassTypeTests
             }
             """;
         
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class BaseClassTypeTests
             }
             """;
         
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -119,6 +119,6 @@ public class BaseClassTypeTests
             }
             """;
         
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 }

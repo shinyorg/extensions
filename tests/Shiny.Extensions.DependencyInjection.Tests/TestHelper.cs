@@ -8,7 +8,33 @@ namespace Shiny.Extensions.DependencyInjection.Tests;
 
 public static class TestHelper
 {
-    public static Task Verify(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null, bool includeAspNetCore = true)
+    public static Task VerifyDI(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)
+    {
+        return RunGenerator(
+            new DependencyInjectionSourceGenerator(),
+            source,
+            msBuildProperties,
+            assemblyName,
+            includeAspNetCore: false
+        );
+    }
+
+    public static Task VerifyWebHosting(string source, string? assemblyName = null, bool includeAspNetCore = true)
+    {
+        return RunGenerator(
+            new WebHostingSourceGenerator(),
+            source,
+            assemblyName: assemblyName,
+            includeAspNetCore: includeAspNetCore
+        );
+    }
+
+    static Task RunGenerator(
+        IIncrementalGenerator generator,
+        string source,
+        Dictionary<string, string>? msBuildProperties = null,
+        string? assemblyName = null,
+        bool includeAspNetCore = false)
     {
         // Parse the source code
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
@@ -23,12 +49,8 @@ public static class TestHelper
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        // Create the source generators
-        var diGenerator = new DependencyInjectionSourceGenerator();
-        var webHostingGenerator = new WebHostingSourceGenerator();
-
-        // Create generator driver with both generators
-        var driver = CSharpGeneratorDriver.Create(diGenerator, webHostingGenerator);
+        // Create generator driver with the specified generator
+        var driver = CSharpGeneratorDriver.Create(generator);
 
         // Configure MSBuild properties if provided
         if (msBuildProperties != null)
@@ -39,14 +61,14 @@ public static class TestHelper
             {
                 analyzerProperties[$"build_property.{kvp.Key}"] = kvp.Value;
             }
-            
+
             var analyzerConfigOptions = new TestAnalyzerConfigOptionsProvider(analyzerProperties);
             driver = (CSharpGeneratorDriver)driver.WithUpdatedAnalyzerConfigOptions(analyzerConfigOptions);
         }
 
         // Run the generator
         var runResult = driver.RunGenerators(compilation);
-        
+
         // Return verification of the generated sources
         return Verifier.Verify(runResult).UseDirectory("Snapshots");
     }

@@ -25,7 +25,7 @@ public class DependencyInjectionSourceGeneratorTests
                      }
                      """;
         
-        return TestHelper.Verify(source,
+        return TestHelper.VerifyDI(source,
             new Dictionary<string, string>
             {
                 { "ShinyDIExtensionMethodName", "AddMyServices" },
@@ -56,7 +56,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -268,7 +268,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -298,7 +298,7 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 
     [Fact]
@@ -323,6 +323,6 @@ public class DependencyInjectionSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyDI(source);
     }
 }

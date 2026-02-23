@@ -16,7 +16,7 @@ public class WebHostingSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source, includeAspNetCore: false);
+        return TestHelper.VerifyWebHosting(source, includeAspNetCore: false);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class WebHostingSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyWebHosting(source);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class WebHostingSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyWebHosting(source);
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class WebHostingSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyWebHosting(source);
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class WebHostingSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyWebHosting(source);
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public class WebHostingSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyWebHosting(source);
     }
 
     [Fact]
@@ -203,6 +203,6 @@ public class WebHostingSourceGeneratorTests
             }
             """;
 
-        return TestHelper.Verify(source);
+        return TestHelper.VerifyWebHosting(source);
     }
 }
