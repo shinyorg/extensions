@@ -1,9 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>$(BaseTargetFramework)</TargetFramework>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="GitHubActionsTestLogger">
@@ -23,7 +27,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj"/>
-        <ProjectReference Include="..\..\src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj"/>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.WebHosting.SourceGenerators\Shiny.Extensions.WebHosting.SourceGenerators.csproj"/>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj"/>
     </ItemGroup>
 </Project>

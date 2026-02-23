@@ -1,4 +1,4 @@
-namespace Shiny.Extensions.DependencyInjection.Tests;
+namespace Shiny.Extensions.WebHosting.Tests;
 
 
 public class WebHostingSourceGeneratorTests
@@ -20,7 +20,7 @@ public class WebHostingSourceGeneratorTests
     }
 
     [Fact]
-    public Task GeneratesInterfaceAndExtensionsWithNoModules()
+    public Task GeneratesExtensionsWithNoModules()
     {
         var source = """
             namespace TestNamespace
@@ -44,7 +44,7 @@ public class WebHostingSourceGeneratorTests
 
             namespace TestNamespace
             {
-                public class CorsModule : Shiny.IInfrastructureModule
+                public class CorsModule : Shiny.IWebModule
                 {
                     public void Add(WebApplicationBuilder builder)
                     {
@@ -71,7 +71,7 @@ public class WebHostingSourceGeneratorTests
 
             namespace TestNamespace
             {
-                public class CorsModule : Shiny.IInfrastructureModule
+                public class CorsModule : Shiny.IWebModule
                 {
                     public void Add(WebApplicationBuilder builder)
                     {
@@ -84,7 +84,7 @@ public class WebHostingSourceGeneratorTests
                     }
                 }
 
-                public class AuthModule : Shiny.IInfrastructureModule
+                public class AuthModule : Shiny.IWebModule
                 {
                     public void Add(WebApplicationBuilder builder)
                     {
@@ -111,13 +111,13 @@ public class WebHostingSourceGeneratorTests
 
             namespace TestNamespace
             {
-                public abstract class BaseModule : Shiny.IInfrastructureModule
+                public abstract class BaseModule : Shiny.IWebModule
                 {
                     public abstract void Add(WebApplicationBuilder builder);
                     public abstract void Use(WebApplication app);
                 }
 
-                public class ConcreteModule : Shiny.IInfrastructureModule
+                public class ConcreteModule : Shiny.IWebModule
                 {
                     public void Add(WebApplicationBuilder builder)
                     {
@@ -144,7 +144,7 @@ public class WebHostingSourceGeneratorTests
 
             namespace Infrastructure.Cors
             {
-                public class CorsModule : Shiny.IInfrastructureModule
+                public class CorsModule : Shiny.IWebModule
                 {
                     public void Add(WebApplicationBuilder builder)
                     {
@@ -160,7 +160,7 @@ public class WebHostingSourceGeneratorTests
 
             namespace Infrastructure.Auth
             {
-                public class AuthModule : Shiny.IInfrastructureModule
+                public class AuthModule : Shiny.IWebModule
                 {
                     public void Add(WebApplicationBuilder builder)
                     {
@@ -188,7 +188,7 @@ public class WebHostingSourceGeneratorTests
 
             namespace TestNamespace
             {
-                public class CorsModule : IInfrastructureModule
+                public class CorsModule : IWebModule
                 {
                     public void Add(WebApplicationBuilder builder)
                     {

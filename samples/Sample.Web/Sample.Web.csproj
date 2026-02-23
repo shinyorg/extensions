@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj"/>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+
+        <ProjectReference Include="..\..\src\Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj"/>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.WebHosting.SourceGenerators\Shiny.Extensions.WebHosting.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+
+    <Import Project="../../src/Shiny.Extensions.DependencyInjection/build/Shiny.Extensions.DependencyInjection.SourceGenerators.props" />
+    <Import Project="../../src/Shiny.Extensions.WebHosting/build/Shiny.Extensions.WebHosting.props" />
+</Project>

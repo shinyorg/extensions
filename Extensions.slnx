@@ -1,4 +1,4 @@
-﻿<Solution>
+<Solution>
     <Folder Name="/Solution/">
         <File Path="LICENSE" />
         <File Path="nuget.png" />
@@ -14,13 +14,17 @@
         <File Path="nuget.config" />
     </Folder>
     <Folder Name="/tests/">
+        <Project Path="samples/Sample.Web/Sample.Web.csproj" />
         <Project Path="Sample\Sample.csproj" />
         <Project Path="tests\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" />
+        <Project Path="tests\Shiny.Extensions.WebHosting.Tests\Shiny.Extensions.WebHosting.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Maui.Tests\Shiny.Extensions.Maui.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj" />
     </Folder>
     <Project Path="src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" />
     <Project Path="src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" />
+    <Project Path="src\Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj" />
+    <Project Path="src\Shiny.Extensions.WebHosting.SourceGenerators\Shiny.Extensions.WebHosting.SourceGenerators.csproj" />
     <Project Path="src\Shiny.Extensions.Stores.Web\Shiny.Extensions.Stores.Web.csproj" />
     <Project Path="src\Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj" />
 </Solution>
