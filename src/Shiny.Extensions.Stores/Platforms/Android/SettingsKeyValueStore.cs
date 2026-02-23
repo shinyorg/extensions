@@ -5,17 +5,6 @@ namespace Shiny.Extensions.Stores;
 
 public class SettingsKeyValueStore : IKeyValueStore
 {
-    // readonly AndroidPlatform platform;
-    // readonly ISerializer serializer;
-    //
-    //
-    // public SettingsKeyValueStore(AndroidPlatform platform, ISerializer serializer)
-    // {
-    //     this.platform = platform;
-    //     this.serializer = serializer;
-    // }
-
-
     public string Alias => "settings";
     public bool IsReadOnly => false;
     public void Clear() => this.Do((_, edit) => edit.Clear());
@@ -109,6 +98,7 @@ public class SettingsKeyValueStore : IKeyValueStore
     }
 
 
-    protected ISharedPreferences GetPrefs() => null;
-    // => this.platform.AppContext.GetSharedPreferences("Shiny", FileCreationMode.Private)!;
+    protected ISharedPreferences GetPrefs() => Application
+        .Context
+        .GetSharedPreferences("Shiny", FileCreationMode.Private)!;
 }
