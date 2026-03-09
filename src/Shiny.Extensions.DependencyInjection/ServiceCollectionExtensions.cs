@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Shiny.Extensions.DependencyInjection;
+namespace Shiny;
 
 
 public static class ServiceCollectionExtensions

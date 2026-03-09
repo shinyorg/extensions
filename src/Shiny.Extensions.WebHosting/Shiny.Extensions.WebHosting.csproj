@@ -4,10 +4,11 @@
         <TargetFramework>$(BaseTargetFramework)</TargetFramework>
         <Description>Web hosting module infrastructure for ASP.NET Core applications</Description>
         <PackageTags>shiny webhosting aspnetcore module</PackageTags>
+        <RootNamespace>Shiny</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
     </ItemGroup>
 
@@ -19,11 +20,5 @@
         <None Include="build\Shiny.Extensions.WebHosting.props"
               PackagePath="buildTransitive\Shiny.Extensions.WebHosting.props"
               Pack="true"/>
-
-        <None Include="..\Shiny.Extensions.WebHosting.SourceGenerators\bin\Release\netstandard2.0\Shiny.Extensions.WebHosting.SourceGenerators.dll"
-              Pack="true"
-              PackagePath="analyzers/dotnet/cs"
-              Visible="false"/>
     </ItemGroup>
-
 </Project>

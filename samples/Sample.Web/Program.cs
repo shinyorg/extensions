@@ -1,8 +1,11 @@
+using Sample.Web;
+using Shiny;
+
 var builder = WebApplication.CreateBuilder(args);
-builder.AddAllWebModules();
+builder.AddInfrastructureModules(new TestModule());
 
 var app = builder.Build();
-app.UseWebModules();
+app.UseInfrastructureModules();
 
 app.MapGet("/", () => "Hello World!");
 

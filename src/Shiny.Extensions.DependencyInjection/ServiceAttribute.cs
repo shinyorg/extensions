@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace Shiny.Extensions.DependencyInjection;
+namespace Shiny;
 
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 public class ServiceAttribute(ServiceLifetime lifetime) : Attribute

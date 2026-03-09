@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Shiny.Extensions.DependencyInjection;
+namespace Shiny;
 
 
 public static class ServiceProviderExtensions
@@ -40,7 +40,6 @@ public static class ServiceProviderExtensions
     public static bool HasImplementation(this IServiceCollection services, Type implementationType)
         => services.Any(x => x.ServiceKey == null && x.ImplementationType == implementationType);
 
-
     /// <summary>
     /// Lazily resolves a service - helps in prevent resolve loops with delegates/services internal to Shiny
     /// </summary>
@@ -50,15 +49,4 @@ public static class ServiceProviderExtensions
     /// <returns></returns>
     public static Lazy<T> GetLazyService<T>(this IServiceProvider services, bool required = false)
         => new(() => required ? services.GetRequiredService<T>() : services.GetService<T>());
-    
-    /// <summary>
-    /// Runs any registered startup tasks
-    /// </summary>
-    /// <param name="services"></param>
-    public static void RunStartupTasks(this IServiceProvider services)
-    {
-        var startupTasks = services.GetServices<IShinyStartupTask>();
-        foreach (var task in startupTasks)
-            task.Start();
-    }
 }

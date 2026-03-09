@@ -1,3 +1,5 @@
+using Shiny;
+
 namespace Sample.Web;
 
 public class TestModule : IWebModule
