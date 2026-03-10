@@ -1,4 +1,9 @@
-﻿namespace Shiny.Extensions.Stores;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Shiny.Extensions.Stores;
+using Shiny.Extensions.Stores.Infrastructure;
+
+namespace Shiny;
 
 
 public static class StoreExtensions
@@ -19,7 +24,6 @@ public static class StoreExtensions
             store.Set(key, value!);
     }
 
-
     /// <summary>
     /// Gets a generic object from the store
     /// </summary>
@@ -34,7 +38,6 @@ public static class StoreExtensions
 
         return (T)store.Get(typeof(T), key);
     }
-
 
     /// <summary>
     /// Thread safetied setting value incrementor
@@ -54,7 +57,6 @@ public static class StoreExtensions
         return id;
     }
 
-
     /// <summary>
     /// Gets a required value from settings
     /// </summary>
@@ -70,8 +72,6 @@ public static class StoreExtensions
         return store.Get<T>(key)!;
     }
 
-
-
     /// <summary>
     /// This will only set the value if the setting is not currently set.  Will not fire Changed event
     /// </summary>
@@ -85,5 +85,64 @@ public static class StoreExtensions
 
         store.Set(key, value);
         return true;
+    }
+    
+    
+    public static IServiceCollection AddShinyStores(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IKeyValueStoreFactory, KeyValueStoreFactory>();
+        services.TryAddSingleton<ISerializer, DefaultSerializer>();
+        services.TryAddSingleton<IObjectStoreBinder, ObjectStoreBinder>();
+        
+        if (!services.Any(x => x.ImplementationType == typeof(MemoryKeyValueStore)))
+        {
+            services.AddSingleton<IKeyValueStore, MemoryKeyValueStore>();
+#if PLATFORM
+            services.AddSingleton<IKeyValueStore, SecureKeyValueStore>();
+            services.AddSingleton<IKeyValueStore, SettingsKeyValueStore>();
+#endif
+        }
+        return services;
+    }
+
+
+    /// <summary>
+    ///  This will add the implementation for ALL of its interfaces and create a persistent storage binding if INotifyPropertyChanged is implemented
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="keyValueAlias">(optional) allows you to set the store to bind to</param>
+    /// <typeparam name="TImpl"></typeparam>
+    /// <returns></returns>
+    public static IServiceCollection AddPersistentService<TImpl>(this IServiceCollection services, string? keyValueAlias = null) where TImpl : class, INotifyPropertyChanged
+        => services.AddPersistentService(typeof(TImpl), keyValueAlias);
+    
+    /// <summary>
+    /// This will add the implementation for ALL of its interfaces and create a persistent storage binding if INotifyPropertyChanged is implemented
+    /// </summary>
+    /// <param name="implementationType"></param>
+    /// <param name="services"></param>
+    /// <param name="keyValueAlias">(optional) allows you to set the store to bind to</param>
+    /// <returns></returns>
+    public static IServiceCollection AddPersistentService(this IServiceCollection services, Type implementationType, string? keyValueAlias = null)
+    {
+        services.AddShinyStores();
+        services.AddSingleton(implementationType, sp =>
+        {
+            var instance = (INotifyPropertyChanged)ActivatorUtilities.CreateInstance(sp, implementationType);
+            sp.GetRequiredService<IObjectStoreBinder>().Bind(instance, keyValueAlias); // TODO: object key?
+            return instance;
+        });
+        var interfaces = implementationType
+            .GetInterfaces()
+            .Where(x => 
+                x != typeof(IDisposable) &&
+                x != typeof(INotifyPropertyChanged)
+            )
+            .ToList();
+        
+        foreach (var iface in interfaces)
+            services.AddSingleton(iface, sp => sp.GetRequiredService(implementationType));
+
+        return services;
     }
 }

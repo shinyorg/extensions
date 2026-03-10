@@ -1,10 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
+using Shiny.Extensions.Stores;
 using Shiny.Extensions.Stores.Web;
 
-namespace Shiny.Extensions.Stores;
+namespace Shiny;
 
 
-public static class ServiceCollectionExtensions
+public static class WebStoreRegistration
 {
     public static IServiceCollection AddShinyWebAssemblyStores(this IServiceCollection services)
     {

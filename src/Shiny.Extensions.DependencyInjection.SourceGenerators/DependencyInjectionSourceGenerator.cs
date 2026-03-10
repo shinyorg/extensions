@@ -494,7 +494,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 {
                     // Multiple interfaces
                     // TODO: this will fail for transient
-                    sb.AppendLine($"        {indent}global::Shiny.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services, \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}global::Shiny.DIExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services, \"{service.KeyedName}\");");
                 }
             }
             else
@@ -514,7 +514,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 {
                     // Multiple interfaces
                     // TODO: this will fail for transient
-                    sb.AppendLine($"        {indent}global::Shiny.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services);");
+                    sb.AppendLine($"        {indent}global::Shiny.DIExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services);");
                 }
             }
         }
