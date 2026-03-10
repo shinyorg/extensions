@@ -76,7 +76,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var current = attributeType;
         while (current != null)
         {
-            if (current.ToDisplayString() == "Shiny.Extensions.DependencyInjection.ServiceAttribute")
+            if (current.ToDisplayString() == "Shiny.ServiceAttribute")
                 return true;
             current = current.BaseType;
         }
@@ -100,9 +100,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         var attributeTypeName = attributeContainingTypeSymbol.ToDisplayString();
         lifetime = attributeTypeName switch
         {
-            "Shiny.Extensions.DependencyInjection.SingletonAttribute" => "Singleton",
-            "Shiny.Extensions.DependencyInjection.ScopedAttribute" => "Scoped",
-            "Shiny.Extensions.DependencyInjection.TransientAttribute" => "Transient",
+            "Shiny.SingletonAttribute" => "Singleton",
+            "Shiny.ScopedAttribute" => "Scoped",
+            "Shiny.TransientAttribute" => "Transient",
             _ => "Singleton" // Default for base ServiceAttribute
         };
 
@@ -120,7 +120,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         if (attributeData != null)
         {
             // For base ServiceAttribute, extract lifetime from constructor argument
-            if (attributeTypeName == "Shiny.Extensions.DependencyInjection.ServiceAttribute" && 
+            if (attributeTypeName == "Shiny.ServiceAttribute" && 
                 attributeData.ConstructorArguments.Length > 0)
             {
                 var lifetimeValue = attributeData.ConstructorArguments[0].Value;
@@ -494,7 +494,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 {
                     // Multiple interfaces
                     // TODO: this will fail for transient
-                    sb.AppendLine($"        {indent}global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services, \"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}global::Shiny.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services, \"{service.KeyedName}\");");
                 }
             }
             else
@@ -514,7 +514,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 {
                     // Multiple interfaces
                     // TODO: this will fail for transient
-                    sb.AppendLine($"        {indent}global::Shiny.Extensions.DependencyInjection.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services);");
+                    sb.AppendLine($"        {indent}global::Shiny.ServiceCollectionExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services);");
                 }
             }
         }

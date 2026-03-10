@@ -7,7 +7,7 @@ public class BaseClassTypeTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -37,7 +37,7 @@ public class BaseClassTypeTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -67,7 +67,7 @@ public class BaseClassTypeTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -97,7 +97,7 @@ public class BaseClassTypeTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {

@@ -31,18 +31,23 @@ public static class MauiExtensions
         builder.ConfigureLifecycleEvents(events =>
         {
 #if ANDROID
-            // events.AddAndroid(android => android
-            //     // Shiny will supply app foreground/background events
-            //     .OnCreate((activity, savedInstanceState) => Host.Lifecycle.OnActivityOnCreate(activity, savedInstanceState))
-            //     .OnRequestPermissionsResult((activity, requestCode, permissions, grantResults) => Host.Lifecycle.OnRequestPermissionsResult(activity, requestCode, permissions, grantResults))
-            //     .OnActivityResult((activity, requestCode, result, intent) => Host.Lifecycle.OnActivityResult(activity, requestCode, result, intent))
-            //     .OnNewIntent((activity, intent) => Host.Lifecycle.OnNewIntent(activity, intent))
-            // );
+            events.AddAndroid(android => android
+                .OnApplicationCreate(x => Host.Lifecycle.OnApplicationCreated(x))
+                .OnCreate((activity, savedInstanceState) => Host.Lifecycle.OnActivityOnCreate(activity, savedInstanceState))
+                .OnRequestPermissionsResult((activity, requestCode, permissions, grantResults) => Host.Lifecycle.OnActivityRequestPermissionResult(activity, requestCode, permissions, grantResults))
+                .OnActivityResult((activity, requestCode, result, intent) => Host.Lifecycle.OnActivityResult(activity, requestCode, result, intent))
+                .OnNewIntent((activity, intent) => Host.Lifecycle.OnActivityNewIntent(activity, intent))
+            );
 #elif APPLE
             // Shiny will supply push events & handle background url for http transfers
             events.AddiOS(ios => ios
                 .WillEnterForeground(_ => Host.Lifecycle.OnAppForeground())
                 .DidEnterBackground(_ => Host.Lifecycle.OnAppBackground())
+                .FinishedLaunching((_, del) =>
+                {
+                    Host.Lifecycle.OnFinishLaunching(del);
+                    return true;
+                })
                 .ContinueUserActivity((_, activity, handler) => Host.Lifecycle.OnContinueUserActivity(activity))
             );
 #elif WINDOWS

@@ -6,24 +6,25 @@ public class DependencyInjectionSourceGeneratorTests
     [Fact]
     public Task GeneratesMsbuildProperties()
     {
-        var source = """
-                     using Microsoft.Extensions.DependencyInjection;
-                     using Shiny.Extensions.DependencyInjection;
+        var source = 
+             """
+             using Microsoft.Extensions.DependencyInjection;
+             using Shiny;
 
-                     namespace TestNamespace
-                     {
-                         public interface IMyService
-                         {
-                             string GetValue();
-                         }
+             namespace TestNamespace
+             {
+                 public interface IMyService
+                 {
+                     string GetValue();
+                 }
 
-                         [Singleton]
-                         public class MySingletonService : IMyService
-                         {
-                             public string GetValue() => "Hello from singleton";
-                         }
-                     }
-                     """;
+                 [Singleton]
+                 public class MySingletonService : IMyService
+                 {
+                     public string GetValue() => "Hello from singleton";
+                 }
+             }
+             """;
         
         return TestHelper.VerifyDI(source,
             new Dictionary<string, string>
@@ -39,7 +40,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -64,7 +65,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -89,7 +90,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -114,7 +115,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -139,7 +140,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -164,7 +165,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -195,7 +196,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -220,7 +221,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -251,7 +252,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -276,7 +277,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {
@@ -306,7 +307,7 @@ public class DependencyInjectionSourceGeneratorTests
     {
         var source = """
             using Microsoft.Extensions.DependencyInjection;
-            using Shiny.Extensions.DependencyInjection;
+            using Shiny;
 
             namespace TestNamespace
             {

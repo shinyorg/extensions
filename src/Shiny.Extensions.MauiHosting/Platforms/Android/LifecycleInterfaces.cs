@@ -3,6 +3,11 @@ using Android.Content.PM;
 
 namespace Shiny;
 
+public interface IOnApplicationCreated
+{
+    void Handle(Application application);
+}
+
 public interface IOnActivityOnCreate
 {
     void ActivityOnCreate(Activity activity, Bundle? savedInstanceState);

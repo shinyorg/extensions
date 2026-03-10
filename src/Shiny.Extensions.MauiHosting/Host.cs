@@ -19,7 +19,7 @@ public class Host : IMauiInitializeService
     }
     
 #if APPLE || ANDROID || WINDOWS
-    public static ILifecycleExecutor Lifecycle => Services.GetRequiredService<ILifecycleExecutor>();
+    internal static ILifecycleExecutor Lifecycle => Services.GetRequiredService<ILifecycleExecutor>();
 #endif
     
     internal static List<IMauiModule> Modules { get; } = new();
