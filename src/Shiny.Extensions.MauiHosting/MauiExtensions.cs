@@ -27,6 +27,10 @@ public static class MauiExtensions
         if (builder.Services.HasImplementation<Host>())
             return builder;
         
+#if ANDROID || IOS || MACCATALYST
+        builder.Services.AddSingleton<ILifecycleExecutor, LifecycleExecutor>();
+#endif
+        
         builder.Services.AddSingleton<IMauiInitializeService, Host>();
         builder.ConfigureLifecycleEvents(events =>
         {
