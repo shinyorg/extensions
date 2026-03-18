@@ -24,9 +24,12 @@ public class Host : IMauiInitializeService
     {
         get
         {
-            field ??= Services.GetRequiredService<ILifecycleExecutor>();
+            if (field == null)
+                throw new InvalidOperationException("Host isn't initialized yet");
+            
             return field;
         }
+        private set => field = value;
     }
     
 #endif
@@ -39,7 +42,9 @@ public class Host : IMauiInitializeService
     {
         var app = IPlatformApplication.Current!;
         Services = services;
-        
+#if APPLE || ANDROID || WINDOWS
+        Lifecycle = services.GetRequiredService<ILifecycleExecutor>();
+#endif        
         foreach (var module in Modules)
             module.Use(app);
 
