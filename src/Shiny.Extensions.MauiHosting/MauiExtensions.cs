@@ -5,7 +5,7 @@ using Microsoft.Maui.LifecycleEvents;
 
 namespace Shiny;
 
-public static class MauiExtensions
+public static class MauiHostingExtensions
 {
     /// <summary>
     ///  Adds the specified modules to the MauiAppBuilder. This will call the Add method on each module, allowing them to add services to the MauiAppBuilder. It will also add a singleton of IMauiInitializeService that will call the Use method on each module when the app is initialized. This allows you to do things like initialize Shiny or other services that need to be initialized at startup.
@@ -62,18 +62,6 @@ public static class MauiExtensions
             // );
 #endif
         });
-        
-        return builder;
-    }
-
-
-    /// <summary>
-    ///  Adds the platform lifecycle hooks to the MauiAppBuilder. This will add the necessary services to the MauiAppBuilder to allow you to use the platform lifecycle hooks in your app
-    /// </summary>
-    /// <param name="builder"></param>
-    /// <returns></returns>
-    public static MauiAppBuilder AddPlatformLifecycleDependencyHooks(this MauiAppBuilder builder)
-    {
         
         return builder;
     }
