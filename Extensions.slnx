@@ -15,6 +15,7 @@
         <File Path="nuget.config" />
     </Folder>
     <Folder Name="/tests/">
+        <Project Path="samples/Sample.CopilotConsole/Sample.CopilotConsole.csproj" />
         <Project Path="samples/Sample.Web/Sample.Web.csproj" />
         <Project Path="Sample\Sample.csproj" />
         <Project Path="tests\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" />

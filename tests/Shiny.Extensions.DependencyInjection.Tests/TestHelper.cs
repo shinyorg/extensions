@@ -13,6 +13,21 @@ public static class TestHelper
         return RunGenerator(
             new DependencyInjectionSourceGenerator(),
             source,
+            GetMetadataReferences(),
+            msBuildProperties,
+            assemblyName
+        );
+    }
+
+    public static Task VerifyAITools(string source, Dictionary<string, string>? msBuildProperties = null, string? assemblyName = null)
+    {
+        var references = GetMetadataReferences();
+        AddAIReferences(references);
+
+        return RunGenerator(
+            new DependencyInjectionSourceGenerator(),
+            source,
+            references,
             msBuildProperties,
             assemblyName
         );
@@ -21,14 +36,12 @@ public static class TestHelper
     static Task RunGenerator(
         IIncrementalGenerator generator,
         string source,
+        List<MetadataReference> references,
         Dictionary<string, string>? msBuildProperties = null,
         string? assemblyName = null)
     {
         // Parse the source code
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
-
-        // Get all necessary references
-        var references = GetMetadataReferences();
 
         // Create compilation
         var compilation = CSharpCompilation.Create(
@@ -110,7 +123,31 @@ public static class TestHelper
             // Shiny assembly not available
         }
 
+        // Add System.ComponentModel (for DescriptionAttribute)
+        try
+        {
+            var componentModelAssembly = typeof(System.ComponentModel.DescriptionAttribute).Assembly;
+            references.Add(MetadataReference.CreateFromFile(componentModelAssembly.Location));
+        }
+        catch
+        {
+            // ComponentModel assembly not available
+        }
+
         return references;
+    }
+
+    private static void AddAIReferences(List<MetadataReference> references)
+    {
+        try
+        {
+            var aiAssembly = typeof(Microsoft.Extensions.AI.AITool).Assembly;
+            references.Add(MetadataReference.CreateFromFile(aiAssembly.Location));
+        }
+        catch
+        {
+            // AI assembly not available
+        }
     }
 }
 

@@ -1,34 +1,38 @@
 <Project>
-    <PropertyGroup>
-        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageVersion Include="DeviceRunners.UITesting.Maui" Version="0.1.0-preview.5"/>
-        <PackageVersion Include="DeviceRunners.UITesting.Xunit" Version="0.1.0-preview.5"/>
-        <PackageVersion Include="DeviceRunners.VisualRunners.Maui" Version="0.1.0-preview.5"/>
-        <PackageVersion Include="DeviceRunners.VisualRunners.Xunit" Version="0.1.0-preview.5"/>
-        <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0"/>
-        <PackageVersion Include="Microsoft.Maui.Core" Version="$(MauiVersion)"/>
-    </ItemGroup>
-    <ItemGroup>
-        <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0"/>
-        <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0"/>
-        <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0"/>
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0"/>
-        <PackageVersion Include="Shiny.Reflector" Version="1.7.1"/>
-        <PackageVersion Include="Nerdbank.GitVersioning" Version="3.9.50"/>
-    </ItemGroup>
-    <ItemGroup>
-        <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0"/>
-        <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.1"/>
-        <PackageVersion Include="Shouldly" Version="4.3.0"/>
-        <PackageVersion Include="Verify.Xunit" Version="31.12.5"/>
-        <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0"/>
-        <PackageVersion Include="xunit" Version="2.9.3"/>
-        <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5"/>
-        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0"/>
-        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4"/>
-    </ItemGroup>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="DeviceRunners.UITesting.Maui" Version="0.1.0-preview.5" />
+    <PackageVersion Include="DeviceRunners.UITesting.Xunit" Version="0.1.0-preview.5" />
+    <PackageVersion Include="DeviceRunners.VisualRunners.Maui" Version="0.1.0-preview.5" />
+    <PackageVersion Include="DeviceRunners.VisualRunners.Xunit" Version="0.1.0-preview.5" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.5.0" />
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Maui.Core" Version="$(MauiVersion)" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.5.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.3.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Shiny.Reflector" Version="1.7.1" />
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.9.50" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.1" />
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="Verify.Xunit" Version="31.12.5" />
+    <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
+  </ItemGroup>
 </Project>

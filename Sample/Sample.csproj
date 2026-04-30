@@ -10,10 +10,15 @@
 
     <ItemGroup>
         <ProjectReference Include="..\src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj"/>
-        <ProjectReference Include="..\src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" 
-                          OutputItemType="Analyzer" 
+        <ProjectReference Include="..\src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
                           ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
-    <Import Project="../src/Shiny.Extensions.DependencyInjection/build/Shiny.Extensions.DependencyInjection.SourceGenerators.props" />
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.AI" />
+      <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
+    </ItemGroup>
+
+    <Import Project="../src/Shiny.Extensions.DependencyInjection/build/Shiny.Extensions.DependencyInjection.SourceGenerators.props"/>
 </Project>

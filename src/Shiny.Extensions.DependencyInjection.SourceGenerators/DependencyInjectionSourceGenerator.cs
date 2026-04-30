@@ -32,6 +32,24 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             compilationAndTypesAndConfig,
             static (spc, source) => Execute(source.Left.Left, source.Left.Right, source.Right, spc)
         );
+
+        // Find interfaces with Service attribute for AI tool generation
+        var interfacesForAITools = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (s, _) => s is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 },
+                transform: static (ctx, _) => GetAIToolInterfaceInfo(ctx)
+            )
+            .Where(static m => m is not null)
+            .Collect();
+
+        var aiToolData = context.CompilationProvider
+            .Combine(interfacesForAITools)
+            .Combine(configOptions);
+
+        context.RegisterSourceOutput(
+            aiToolData,
+            static (spc, source) => ExecuteAIToolGeneration(source.Left.Left, source.Left.Right!, source.Right, spc)
+        );
     }
 
     static bool IsSyntaxTargetForGeneration(SyntaxNode node) => 
@@ -584,6 +602,420 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
 
         return false;
     }
+
+    // ==================== AI Tool Generation ====================
+
+    static AIToolInterfaceInfo? GetAIToolInterfaceInfo(GeneratorSyntaxContext context)
+    {
+        if (context.Node is not InterfaceDeclarationSyntax interfaceDecl)
+            return null;
+
+        var interfaceSymbol = context.SemanticModel.GetDeclaredSymbol(interfaceDecl) as INamedTypeSymbol;
+        if (interfaceSymbol is null)
+            return null;
+
+        // Check if interface has ToolAttribute
+        bool hasToolAttribute = false;
+        foreach (var attr in interfaceSymbol.GetAttributes())
+        {
+            if (attr.AttributeClass?.ToDisplayString() == "Shiny.ToolAttribute")
+            {
+                hasToolAttribute = true;
+                break;
+            }
+        }
+        if (!hasToolAttribute)
+            return null;
+
+        // Get interface-level description
+        string? interfaceDescription = null;
+        foreach (var attr in interfaceSymbol.GetAttributes())
+        {
+            if (attr.AttributeClass?.ToDisplayString() == "System.ComponentModel.DescriptionAttribute" &&
+                attr.ConstructorArguments.Length > 0)
+            {
+                interfaceDescription = attr.ConstructorArguments[0].Value as string;
+                break;
+            }
+        }
+
+        // Find methods with [Description]
+        var methods = new List<AIToolMethodInfo>();
+        foreach (var member in interfaceSymbol.GetMembers())
+        {
+            if (member is not IMethodSymbol method || method.MethodKind != MethodKind.Ordinary)
+                continue;
+
+            string? methodDescription = null;
+            foreach (var attr in method.GetAttributes())
+            {
+                if (attr.AttributeClass?.ToDisplayString() == "System.ComponentModel.DescriptionAttribute" &&
+                    attr.ConstructorArguments.Length > 0)
+                {
+                    methodDescription = attr.ConstructorArguments[0].Value as string;
+                    break;
+                }
+            }
+
+            if (methodDescription is null)
+                continue;
+
+            // Determine return type info
+            var returnType = method.ReturnType;
+            bool isVoid = method.ReturnsVoid;
+            bool isTask = returnType.ToDisplayString() == "System.Threading.Tasks.Task";
+            bool isGenericTask = returnType is INamedTypeSymbol { IsGenericType: true } nt &&
+                nt.ConstructedFrom.ToDisplayString() == "System.Threading.Tasks.Task<TResult>";
+
+            string? innerReturnType = null;
+            if (isGenericTask)
+            {
+                innerReturnType = ((INamedTypeSymbol)returnType).TypeArguments[0]
+                    .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+            else if (!isVoid && !isTask)
+            {
+                innerReturnType = returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+
+            // Extract parameters
+            var parameters = new List<AIToolParameterInfo>();
+            foreach (var param in method.Parameters)
+            {
+                bool isCancellationToken = param.Type.ToDisplayString() == "System.Threading.CancellationToken";
+
+                string? paramDescription = null;
+                if (!isCancellationToken)
+                {
+                    foreach (var attr in param.GetAttributes())
+                    {
+                        if (attr.AttributeClass?.ToDisplayString() == "System.ComponentModel.DescriptionAttribute" &&
+                            attr.ConstructorArguments.Length > 0)
+                        {
+                            paramDescription = attr.ConstructorArguments[0].Value as string;
+                            break;
+                        }
+                    }
+                }
+
+                parameters.Add(new AIToolParameterInfo
+                {
+                    Name = param.Name,
+                    FullTypeName = param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    Description = paramDescription,
+                    HasDefaultValue = param.HasExplicitDefaultValue,
+                    IsCancellationToken = isCancellationToken,
+                    IsEnum = param.Type.TypeKind == TypeKind.Enum
+                });
+            }
+
+            methods.Add(new AIToolMethodInfo
+            {
+                MethodName = method.Name,
+                Description = methodDescription,
+                IsVoid = isVoid,
+                IsTask = isTask,
+                IsGenericTask = isGenericTask,
+                InnerReturnType = innerReturnType,
+                Parameters = parameters
+            });
+        }
+
+        if (methods.Count == 0)
+            return null;
+
+        return new AIToolInterfaceInfo
+        {
+            InterfaceName = interfaceSymbol.Name,
+            FullInterfaceName = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            InterfaceDescription = interfaceDescription,
+            Methods = methods
+        };
+    }
+
+    static void ExecuteAIToolGeneration(
+        Compilation compilation,
+        ImmutableArray<AIToolInterfaceInfo?> interfaces,
+        AnalyzerConfigOptionsProvider configOptions,
+        SourceProductionContext context)
+    {
+        // Only generate if Microsoft.Extensions.AI is referenced
+        var aiToolType = compilation.GetTypeByMetadataName("Microsoft.Extensions.AI.AIFunction");
+        if (aiToolType is null)
+            return;
+
+        var validInterfaces = interfaces.IsDefaultOrEmpty
+            ? new List<AIToolInterfaceInfo>()
+            : interfaces.Where(i => i is not null).Cast<AIToolInterfaceInfo>().ToList();
+
+        if (validInterfaces.Count == 0)
+            return;
+
+        var targetNamespace = GetTargetNamespace(compilation, configOptions);
+        var hasInternalProperty = configOptions.GlobalOptions.TryGetValue("build_property.ShinyDIExtensionInternalAccessor", out var useInternal);
+        var parsedSuccessfully = Boolean.TryParse(useInternal, out var internalResult);
+        var useInternalAccessor = hasInternalProperty && parsedSuccessfully && internalResult;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("// <auto-generated />");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine();
+
+        var isGlobalNamespace = string.IsNullOrEmpty(targetNamespace) || targetNamespace == "<global namespace>";
+        if (!isGlobalNamespace)
+            sb.AppendLine($"namespace {targetNamespace};").AppendLine();
+
+        var accessModifier = useInternalAccessor ? "internal" : "public";
+        var allToolClassNames = new List<string>();
+
+        // Generate AITool classes
+        foreach (var iface in validInterfaces)
+        {
+            foreach (var method in iface.Methods)
+            {
+                var className = $"{iface.InterfaceName}{method.MethodName}AITool";
+                allToolClassNames.Add(className);
+                GenerateAIToolClass(sb, iface, method, className, accessModifier);
+                sb.AppendLine();
+            }
+        }
+
+        // Generate AddGeneratedAITools extension method
+        sb.AppendLine($"{accessModifier} static class __GeneratedAIToolRegistrations");
+        sb.AppendLine("{");
+        sb.AppendLine($"    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddGeneratedAITools(");
+        sb.AppendLine("        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
+        sb.AppendLine("    {");
+
+        foreach (var toolClassName in allToolClassNames)
+        {
+            var fullToolName = isGlobalNamespace ? toolClassName : $"{targetNamespace}.{toolClassName}";
+            sb.AppendLine($"        services.AddTransient<global::Microsoft.Extensions.AI.AITool, global::{fullToolName}>();");
+        }
+
+        sb.AppendLine("        return services;");
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+
+        context.AddSource("GeneratedAITools.g.cs", sb.ToString());
+    }
+
+    static void GenerateAIToolClass(
+        StringBuilder sb,
+        AIToolInterfaceInfo iface,
+        AIToolMethodInfo method,
+        string className,
+        string accessModifier)
+    {
+        var toolName = $"{iface.InterfaceName}{method.MethodName}";
+        var nonCtParams = method.Parameters.Where(p => !p.IsCancellationToken).ToList();
+
+        // XML doc comment
+        sb.AppendLine($"/// <summary>{EscapeXml(method.Description)}</summary>");
+        sb.AppendLine($"{accessModifier} class {className} : global::Microsoft.Extensions.AI.AIFunction");
+        sb.AppendLine("{");
+
+        // Service field
+        sb.AppendLine($"    private readonly {iface.FullInterfaceName} _service;");
+        sb.AppendLine();
+
+        // Properties for non-CT parameters
+        foreach (var param in nonCtParams)
+        {
+            if (param.Description is not null)
+                sb.AppendLine($"    [global::System.ComponentModel.Description(\"{EscapeString(param.Description)}\")]");
+            sb.AppendLine($"    public {param.FullTypeName} {Capitalize(param.Name)} {{ get; set; }} = default!;");
+            sb.AppendLine();
+        }
+
+        // Constructor
+        sb.AppendLine($"    public {className}({iface.FullInterfaceName} service)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        _service = service;");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+
+        // Name and Description overrides
+        sb.AppendLine($"    public override string Name => \"{toolName}\";");
+        sb.AppendLine($"    public override string Description => \"{EscapeString(method.Description)}\";");
+        sb.AppendLine();
+
+        // JsonSchema override
+        if (nonCtParams.Count > 0)
+        {
+            var requiredParams = nonCtParams.Where(p => !p.HasDefaultValue).ToList();
+
+            sb.AppendLine("    public override global::System.Text.Json.JsonElement JsonSchema { get; } =");
+            sb.AppendLine("        global::System.Text.Json.JsonDocument.Parse(\"\"\"");
+            sb.AppendLine("        {");
+            sb.AppendLine("            \"type\": \"object\",");
+            sb.AppendLine("            \"properties\": {");
+
+            for (int i = 0; i < nonCtParams.Count; i++)
+            {
+                var param = nonCtParams[i];
+                var jsonType = GetJsonSchemaType(param.FullTypeName, param.IsEnum);
+                var comma = i < nonCtParams.Count - 1 ? "," : "";
+
+                if (param.Description is not null)
+                    sb.AppendLine($"                \"{param.Name}\": {{ \"type\": \"{jsonType}\", \"description\": \"{EscapeJsonString(param.Description)}\" }}{comma}");
+                else
+                    sb.AppendLine($"                \"{param.Name}\": {{ \"type\": \"{jsonType}\" }}{comma}");
+            }
+
+            sb.AppendLine("            }");
+
+            if (requiredParams.Count > 0)
+            {
+                var requiredJson = string.Join(", ", requiredParams.Select(p => $"\"{p.Name}\""));
+                sb.AppendLine($"            ,\"required\": [{requiredJson}]");
+            }
+
+            sb.AppendLine("        }");
+            sb.AppendLine("        \"\"\").RootElement.Clone();");
+        }
+        sb.AppendLine();
+
+        // InvokeCoreAsync
+        bool isAsync = method.IsTask || method.IsGenericTask;
+        var asyncKeyword = isAsync ? "async " : "";
+
+        sb.AppendLine($"    protected override {asyncKeyword}global::System.Threading.Tasks.ValueTask<object?> InvokeCoreAsync(");
+        sb.AppendLine("        global::Microsoft.Extensions.AI.AIFunctionArguments arguments,");
+        sb.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
+        sb.AppendLine("    {");
+
+        // Extract arguments — serialize to JsonElement then use typed accessors
+        if (nonCtParams.Count > 0)
+        {
+            sb.AppendLine("        var __json = global::System.Text.Json.JsonSerializer.SerializeToElement(arguments);");
+            sb.AppendLine();
+
+            foreach (var param in nonCtParams)
+            {
+                var propName = Capitalize(param.Name);
+                var jsonAccessor = GetJsonElementConversion(param.FullTypeName, $"__json.GetProperty(\"{param.Name}\")", param.IsEnum);
+
+                if (param.HasDefaultValue)
+                {
+                    sb.AppendLine($"        if (__json.TryGetProperty(\"{param.Name}\", out var __p_{param.Name}) && __p_{param.Name}.ValueKind != global::System.Text.Json.JsonValueKind.Null)");
+                    var optionalAccessor = GetJsonElementConversion(param.FullTypeName, $"__p_{param.Name}", param.IsEnum);
+                    sb.AppendLine($"            this.{propName} = {optionalAccessor};");
+                }
+                else
+                {
+                    sb.AppendLine($"        this.{propName} = {jsonAccessor};");
+                }
+            }
+            sb.AppendLine();
+        }
+
+        // Build method call arguments (in original parameter order, including CT)
+        var argParts = new List<string>();
+        foreach (var param in method.Parameters)
+        {
+            argParts.Add(param.IsCancellationToken ? "cancellationToken" : $"this.{Capitalize(param.Name)}");
+        }
+        var args = string.Join(", ", argParts);
+
+        // Generate the service method call
+        if (method.IsVoid)
+        {
+            sb.AppendLine($"        _service.{method.MethodName}({args});");
+            sb.AppendLine("        return new global::System.Threading.Tasks.ValueTask<object?>((object?)null);");
+        }
+        else if (method.IsTask)
+        {
+            sb.AppendLine($"        await _service.{method.MethodName}({args});");
+            sb.AppendLine("        return null;");
+        }
+        else if (method.IsGenericTask)
+        {
+            sb.AppendLine($"        return await _service.{method.MethodName}({args});");
+        }
+        else
+        {
+            sb.AppendLine($"        return new global::System.Threading.Tasks.ValueTask<object?>(_service.{method.MethodName}({args}));");
+        }
+
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+    }
+
+    static string Capitalize(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return name;
+        return char.ToUpperInvariant(name[0]) + name.Substring(1);
+    }
+
+    static string EscapeString(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    static string EscapeJsonString(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    static string EscapeXml(string s) => s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+
+    static string GetJsonSchemaType(string fullTypeName, bool isEnum)
+    {
+        if (isEnum)
+            return "string";
+
+        return fullTypeName switch
+        {
+            "string" or "global::System.String" => "string",
+            "bool" or "global::System.Boolean" => "boolean",
+            "byte" or "global::System.Byte"
+                or "sbyte" or "global::System.SByte"
+                or "short" or "global::System.Int16"
+                or "ushort" or "global::System.UInt16"
+                or "int" or "global::System.Int32"
+                or "uint" or "global::System.UInt32"
+                or "long" or "global::System.Int64"
+                or "ulong" or "global::System.UInt64" => "integer",
+            "float" or "global::System.Single"
+                or "double" or "global::System.Double"
+                or "decimal" or "global::System.Decimal" => "number",
+            "global::System.Guid"
+                or "global::System.DateTime"
+                or "global::System.DateTimeOffset"
+                or "global::System.DateOnly"
+                or "global::System.TimeOnly"
+                or "global::System.TimeSpan"
+                or "global::System.Uri" => "string",
+            _ => "object"
+        };
+    }
+
+    static string GetJsonElementConversion(string fullTypeName, string varName, bool isEnum)
+    {
+        if (isEnum)
+            return $"global::System.Enum.Parse<{fullTypeName}>({varName}.GetString()!)";
+
+        // Map standard types to their AOT-safe JsonElement accessor methods
+        // Includes both keyword aliases (string, int) and fully qualified names (global::System.String)
+        return fullTypeName switch
+        {
+            "string" or "global::System.String" => $"{varName}.GetString()!",
+            "bool" or "global::System.Boolean" => $"{varName}.GetBoolean()",
+            "byte" or "global::System.Byte" => $"{varName}.GetByte()",
+            "sbyte" or "global::System.SByte" => $"{varName}.GetSByte()",
+            "short" or "global::System.Int16" => $"{varName}.GetInt16()",
+            "ushort" or "global::System.UInt16" => $"{varName}.GetUInt16()",
+            "int" or "global::System.Int32" => $"{varName}.GetInt32()",
+            "uint" or "global::System.UInt32" => $"{varName}.GetUInt32()",
+            "long" or "global::System.Int64" => $"{varName}.GetInt64()",
+            "ulong" or "global::System.UInt64" => $"{varName}.GetUInt64()",
+            "float" or "global::System.Single" => $"{varName}.GetSingle()",
+            "double" or "global::System.Double" => $"{varName}.GetDouble()",
+            "decimal" or "global::System.Decimal" => $"{varName}.GetDecimal()",
+            "global::System.Guid" => $"{varName}.GetGuid()",
+            "global::System.DateTime" => $"{varName}.GetDateTime()",
+            "global::System.DateTimeOffset" => $"{varName}.GetDateTimeOffset()",
+            "global::System.DateOnly" => $"global::System.DateOnly.Parse({varName}.GetString()!)",
+            "global::System.TimeOnly" => $"global::System.TimeOnly.Parse({varName}.GetString()!)",
+            "global::System.TimeSpan" => $"global::System.TimeSpan.Parse({varName}.GetString()!)",
+            "global::System.Uri" => $"new global::System.Uri({varName}.GetString()!)",
+            // Fallback to JsonSerializer for complex/unknown types
+            _ => $"global::System.Text.Json.JsonSerializer.Deserialize<{fullTypeName}>({varName}.GetRawText())!"
+        };
+    }
 }
 
 class ServiceInfo
@@ -602,4 +1034,33 @@ class ServiceInfo
     public string? SpecificType { get; set; }
     public Location? AttributeLocation { get; set; }
     public bool HasConflictingConfiguration { get; set; }
+}
+
+class AIToolInterfaceInfo
+{
+    public string InterfaceName { get; set; } = string.Empty;
+    public string FullInterfaceName { get; set; } = string.Empty;
+    public string? InterfaceDescription { get; set; }
+    public List<AIToolMethodInfo> Methods { get; set; } = [];
+}
+
+class AIToolMethodInfo
+{
+    public string MethodName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public bool IsVoid { get; set; }
+    public bool IsTask { get; set; }
+    public bool IsGenericTask { get; set; }
+    public string? InnerReturnType { get; set; }
+    public List<AIToolParameterInfo> Parameters { get; set; } = [];
+}
+
+class AIToolParameterInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public string FullTypeName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool HasDefaultValue { get; set; }
+    public bool IsCancellationToken { get; set; }
+    public bool IsEnum { get; set; }
 }
