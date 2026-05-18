@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BenchmarkDotNet"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.Reflector\Shiny.Extensions.Reflector.csproj"/>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.Reflector.SourceGenerators\Shiny.Extensions.Reflector.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="False"/>
+    </ItemGroup>
+
+    <Import Project="..\..\src\Shiny.Extensions.Reflector\build\Package.targets"/>
+</Project>

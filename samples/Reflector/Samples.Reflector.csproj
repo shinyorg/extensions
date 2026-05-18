@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <MyCustomVar>Hello World</MyCustomVar>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.Reflector.SourceGenerators\Shiny.Extensions.Reflector.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="False"/>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.Reflector\Shiny.Extensions.Reflector.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ReflectorItem Include="MyReflectorItem"
+                       Value="This is a sample value"
+                       Visible="false"/>
+
+        <ReflectorItem Include="PropertyGroupMyCustomVar"
+                       Value="$(MyCustomVar)"
+                       Visible="false"/>
+    </ItemGroup>
+
+    <Import Project="..\..\src\Shiny.Extensions.Reflector\build\Package.targets"/>
+</Project>

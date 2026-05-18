@@ -1,13 +1,14 @@
-﻿using Android.Content;
+using Android.Content;
 
 namespace Shiny.Extensions.Stores;
 
 
-public class SettingsKeyValueStore : IKeyValueStore
+public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
 {
-    public string Alias => "settings";
     public bool IsReadOnly => false;
+
     public void Clear() => this.Do((_, edit) => edit.Clear());
+
     public bool Contains(string key)
     {
         lock (this.syncLock)
@@ -15,22 +16,22 @@ public class SettingsKeyValueStore : IKeyValueStore
     }
 
 
-    public object? Get(Type type, string key)
+    public T? Get<T>(string key)
     {
         lock (this.syncLock)
         {
             using var prefs = this.GetPrefs();
-            // if (!prefs.Contains(key))
-            //     return type.GetDefaultValue();
+            if (!prefs.Contains(key))
+                return default;
 
-            return Type.GetTypeCode(type) switch
+            return Type.GetTypeCode(typeof(T)) switch
             {
-                TypeCode.Boolean => prefs.GetBoolean(key, false),
-                TypeCode.Int32 => prefs.GetInt(key, 0),
-                TypeCode.Int64 => prefs.GetLong(key, 0),
-                TypeCode.Single => prefs.GetFloat(key, 0),
-                TypeCode.String => prefs.GetString(key, String.Empty),
-                // _ => this.serializer.Deserialize(type, prefs.GetString(key, String.Empty))
+                TypeCode.Boolean => (T)(object)prefs.GetBoolean(key, false),
+                TypeCode.Int32   => (T)(object)prefs.GetInt(key, 0),
+                TypeCode.Int64   => (T)(object)prefs.GetLong(key, 0L),
+                TypeCode.Single  => (T)(object)prefs.GetFloat(key, 0f),
+                TypeCode.String  => (T)(object)(prefs.GetString(key, String.Empty) ?? String.Empty),
+                _                => serializer.Deserialize<T>(prefs.GetString(key, String.Empty)!)
             };
         }
     }
@@ -51,40 +52,24 @@ public class SettingsKeyValueStore : IKeyValueStore
     }
 
 
-    public void Set(string key, object value) => this.Do((prefs, edit) =>
+    public void Set<T>(string key, T value) => this.Do((prefs, edit) =>
     {
-        var typeCode = Type.GetTypeCode(value.GetType());
-        switch (typeCode)
+        switch (value)
         {
-            case TypeCode.Boolean:
-                edit.PutBoolean(key, (bool)value);
+            case bool b:   edit.PutBoolean(key, b); break;
+            case int i:    edit.PutInt(key, i); break;
+            case long l:   edit.PutLong(key, l); break;
+            case float f:  edit.PutFloat(key, f); break;
+            case string s: edit.PutString(key, s); break;
+            case null:     edit.Remove(key); break;
+            default:
+                edit.PutString(key, serializer.Serialize<T>(value));
                 break;
-
-            case TypeCode.Int32:
-                edit.PutInt(key, (int)value);
-                break;
-
-            case TypeCode.Int64:
-                edit.PutLong(key, (long)value);
-                break;
-
-            case TypeCode.Single:
-                edit.PutFloat(key, (float)value);
-                break;
-
-            case TypeCode.String:
-                edit.PutString(key, (string)value);
-                break;
-
-            // default:
-            //     var @string = this.serializer.Serialize(value);
-            //     edit.PutString(key, @string);
-            //     break;
         }
     });
 
 
-    readonly object syncLock = new object();
+    readonly object syncLock = new();
     void Do(Action<ISharedPreferences, ISharedPreferencesEditor> doWork)
     {
         lock (this.syncLock)

@@ -1,35 +1,36 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace Shiny.Extensions.Stores;
 
 
+/// <summary>
+/// Binds <see cref="INotifyPropertyChanged"/> instances to an <see cref="IKeyValueStore"/>,
+/// hydrating their properties on bind and persisting them on property changes.
+/// </summary>
 public interface IObjectStoreBinder
 {
     /// <summary>
-    /// Attempts to bind an object to a named store, if the alias is not passed, the binder will look at the attribute
+    /// Attempts to bind an object to a keyed store. If <paramref name="storeKey"/> is null,
+    /// the binder looks at <see cref="ObjectStoreBinderAttribute"/> on the type; if neither is
+    /// present, the default (unkeyed) <see cref="IKeyValueStore"/> is used.
     /// </summary>
-    /// <param name="npc"></param>
-    /// <param name="keyValueStoreAlias"></param>
-    void Bind(INotifyPropertyChanged npc, string? keyValueStoreAlias = null);
+    void Bind(INotifyPropertyChanged npc, object? storeKey = null);
 
 
     /// <summary>
-    /// Binds an object to a given store
+    /// Binds an object directly to a given store.
     /// </summary>
-    /// <param name="npc"></param>
-    /// <param name="store"></param>
     void Bind(INotifyPropertyChanged npc, IKeyValueStore store);
 
 
     /// <summary>
-    /// Unbinds an object from whatever store it was bound to
+    /// Unbinds an object from whatever store it was bound to.
     /// </summary>
-    /// <param name="npc"></param>
     void UnBind(INotifyPropertyChanged npc);
 
 
     /// <summary>
-    /// Unbinds any existing instances
+    /// Unbinds any existing instances.
     /// </summary>
     void UnBindAll();
 }

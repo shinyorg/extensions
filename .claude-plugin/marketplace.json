@@ -8,7 +8,7 @@
     {
       "name": "shiny-extensions",
       "source": "./",
-      "description": "Claude Code plugin for Shiny Extensions - attribute-driven DI registration, cross-platform key/value stores, and ASP.NET infrastructure modules"
+      "description": "Claude Code plugin for Shiny Extensions - attribute-driven DI registration, source-generated reflection, cross-platform key/value stores and repositories, and ASP.NET infrastructure modules"
     }
   ]
 }

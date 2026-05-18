@@ -1,40 +1,61 @@
-﻿using System;
 using Windows.Storage;
 
 namespace Shiny.Extensions.Stores;
 
 
-public class SettingsKeyValueStore : IKeyValueStore
+public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
 {
     public string? ContainerName { get; set; }
-    readonly ISerializer serializer;
 
-
-    public SettingsKeyValueStore(ISerializer serializer)
-        => this.serializer = serializer;
-
-
-    public string Alias => "settings";
     public bool IsReadOnly => false;
     public void Clear() => this.Container.Values.Clear();
     public bool Contains(string key) => this.Container.Values.ContainsKey(key);
-    public object? Get(Type type, string key)
+
+
+    public T? Get<T>(string key)
     {
         if (!this.Contains(key))
-            return null;
+            return default;
 
-        var value = (string)this.container.Values[key];
-        var obj = this.serializer.Deserialize(type, value);
-        return obj;
+        var raw = this.Container.Values[key];
+
+        if (raw is T direct)
+            return direct;
+
+        if (raw is string s)
+            return serializer.Deserialize<T>(s);
+
+        return default;
     }
+
+
     public bool Remove(string key) => this.Container.Values.Remove(key);
-    public void Set(string key, object value)
+
+
+    public void Set<T>(string key, T value)
     {
-        var s = this.serializer.Serialize(value);
+        if (value is null)
+        {
+            this.Remove(key);
+            return;
+        }
+
+        object stored = value switch
+        {
+            bool   => value!,
+            int    => value!,
+            long   => value!,
+            double => value!,
+            float  => value!,
+            string => value!,
+            byte[] => value!,
+            _      => serializer.Serialize<T>(value)
+        };
+
         if (this.Contains(key))
-            this.Container.Values[key] = s;
+            this.Container.Values[key] = stored;
         else
-            this.Container.Values.Add(key, s);
+            this.Container.Values.Add(key, stored);
     }
 
 

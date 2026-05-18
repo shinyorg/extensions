@@ -1,0 +1,12 @@
+﻿[
+  {
+    Name: Name,
+    Type: string,
+    HasSetter: true
+  },
+  {
+    Name: Age,
+    Type: int,
+    HasSetter: true
+  }
+]

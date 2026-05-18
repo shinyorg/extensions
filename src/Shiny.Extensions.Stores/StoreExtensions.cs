@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shiny.Extensions.Stores;
 using Shiny.Extensions.Stores.Infrastructure;
@@ -8,76 +8,62 @@ namespace Shiny;
 
 public static class StoreExtensions
 {
-    static readonly object syncLock = new object();
+    static readonly object syncLock = new();
+
 
     /// <summary>
-    /// If the value is null or default for the type, it will remove the key from the store - otherwise it will store it
+    /// Gets a value, returning <paramref name="defaultValue"/> if the key is absent.
     /// </summary>
-    /// <param name="store"></param>
-    /// <param name="key"></param>
-    /// <param name="value"></param>
-    public static void SetOrRemove(this IKeyValueStore store, string key, object? value)
+    public static T Get<T>(this IKeyValueStore store, string key, T defaultValue)
     {
-        if (value == null)
+        var value = store.Get<T>(key);
+        return value is null ? defaultValue : value;
+    }
+
+
+    /// <summary>
+    /// Removes the key when <paramref name="value"/> is null or equal to <c>default(T)</c>;
+    /// otherwise stores the value.
+    /// </summary>
+    public static void SetOrRemove<T>(this IKeyValueStore store, string key, T? value)
+    {
+        if (value is null || value.Equals(default(T)))
             store.Remove(key);
         else
-            store.Set(key, value!);
+            store.Set(key, value);
     }
 
-    /// <summary>
-    /// Gets a generic object from the store
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="store"></param>
-    /// <param name="key"></param>
-    /// <returns></returns>
-    public static T Get<T>(this IKeyValueStore store, string key, T defaultValue = default)
-    {
-        if (!store.Contains(key))
-            return defaultValue;
-
-        return (T)store.Get(typeof(T), key);
-    }
 
     /// <summary>
-    /// Thread safetied setting value incrementor
+    /// Thread-safe incrementing counter stored at the given key.
     /// </summary>
-    /// <param name="store"></param>
-    /// <returns></returns>
     public static int IncrementValue(this IKeyValueStore store, string key = "NextId")
     {
-        var id = 0;
-
         lock (syncLock)
         {
-            id = store.Get<int>(key);
-            id++;
+            var id = store.Get<int>(key) + 1;
             store.Set(key, id);
+            return id;
         }
-        return id;
     }
 
+
     /// <summary>
-    /// Gets a required value from settings
+    /// Gets a required value. Throws if the key is not set.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="store"></param>
-    /// <param name="key"></param>
-    /// <returns></returns>
     public static T GetRequired<T>(this IKeyValueStore store, string key)
     {
-        if (!store.Contains(key))
+        var value = store.Get<T>(key);
+        if (value is null)
             throw new ArgumentException($"Store key '{key}' is not set");
 
-        return store.Get<T>(key)!;
+        return value;
     }
 
+
     /// <summary>
-    /// This will only set the value if the setting is not currently set.  Will not fire Changed event
+    /// Sets a value only if the key is not already present. Returns true if the value was set.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="key"></param>
-    /// <param name="value"></param>
     public static bool SetDefault<T>(this IKeyValueStore store, string key, T value)
     {
         if (store.Contains(key))
@@ -86,62 +72,88 @@ public static class StoreExtensions
         store.Set(key, value);
         return true;
     }
-    
-    
+
+
+    /// <summary>
+    /// Registers Shiny store services: <see cref="ISerializer"/>, <see cref="IObjectStoreBinder"/>,
+    /// platform-native keyed <see cref="IKeyValueStore"/> for <see cref="StoreKeys.Default"/> and
+    /// <see cref="StoreKeys.Secure"/> (on mobile/desktop platforms), and an unkeyed default that
+    /// resolves to the <see cref="StoreKeys.Default"/> store.
+    /// </summary>
     public static IServiceCollection AddShinyStores(this IServiceCollection services)
     {
-        services.TryAddSingleton<IKeyValueStoreFactory, KeyValueStoreFactory>();
         services.TryAddSingleton<ISerializer, DefaultSerializer>();
         services.TryAddSingleton<IObjectStoreBinder, ObjectStoreBinder>();
-        
-        if (!services.Any(x => x.ImplementationType == typeof(MemoryKeyValueStore)))
-        {
-            services.AddSingleton<IKeyValueStore, MemoryKeyValueStore>();
+
 #if PLATFORM
-            services.AddSingleton<IKeyValueStore, SecureKeyValueStore>();
-            services.AddSingleton<IKeyValueStore, SettingsKeyValueStore>();
-#endif
+        if (!services.Any(x => x.ServiceType == typeof(IKeyValueStore) && x.ServiceKey?.Equals(StoreKeys.Default) == true))
+        {
+            services.AddKeyedSingleton<IKeyValueStore, SettingsKeyValueStore>(StoreKeys.Default);
+            services.AddKeyedSingleton<IKeyValueStore, SecureKeyValueStore>(StoreKeys.Secure);
         }
+#endif
+
+        services.TryAddSingleton<IKeyValueStore>(sp =>
+        {
+            var settings = sp.GetKeyedService<IKeyValueStore>(StoreKeys.Default);
+            return settings ?? new MemoryKeyValueStore();
+        });
+
         return services;
     }
 
 
     /// <summary>
-    ///  This will add the implementation for ALL of its interfaces and create a persistent storage binding if INotifyPropertyChanged is implemented
+    /// Chains a binding step onto the most recently registered service. When the service is first resolved
+    /// and the produced instance implements <see cref="INotifyPropertyChanged"/>, the instance is bound to
+    /// the object store via <see cref="IObjectStoreBinder"/>. If the instance does not implement
+    /// <see cref="INotifyPropertyChanged"/> the step is a no-op.
     /// </summary>
+    /// <remarks>
+    /// The preceding registration must be factory-based - see <see cref="DIExtensions.OnResolved{TService}"/>.
+    /// </remarks>
     /// <param name="services"></param>
-    /// <param name="keyValueAlias">(optional) allows you to set the store to bind to</param>
-    /// <typeparam name="TImpl"></typeparam>
-    /// <returns></returns>
-    public static IServiceCollection AddPersistentService<TImpl>(this IServiceCollection services, string? keyValueAlias = null) where TImpl : class, INotifyPropertyChanged
-        => services.AddPersistentService(typeof(TImpl), keyValueAlias);
-    
-    /// <summary>
-    /// This will add the implementation for ALL of its interfaces and create a persistent storage binding if INotifyPropertyChanged is implemented
-    /// </summary>
-    /// <param name="implementationType"></param>
-    /// <param name="services"></param>
-    /// <param name="keyValueAlias">(optional) allows you to set the store to bind to</param>
-    /// <returns></returns>
-    public static IServiceCollection AddPersistentService(this IServiceCollection services, Type implementationType, string? keyValueAlias = null)
+    /// <param name="storeKey">(optional) DI service key of the target <see cref="IKeyValueStore"/></param>
+    public static IServiceCollection BindOnResolve(this IServiceCollection services, object? storeKey = null)
     {
         services.AddShinyStores();
-        services.AddSingleton(implementationType, sp =>
+        return services.OnResolved<object>((instance, sp) =>
         {
-            var instance = (INotifyPropertyChanged)ActivatorUtilities.CreateInstance(sp, implementationType);
-            sp.GetRequiredService<IObjectStoreBinder>().Bind(instance, keyValueAlias); // TODO: object key?
-            return instance;
+            if (instance is INotifyPropertyChanged npc)
+                sp.GetRequiredService<IObjectStoreBinder>().Bind(npc, storeKey);
         });
-        var interfaces = implementationType
+    }
+
+
+    /// <summary>
+    /// Registers a singleton service backed by a user-supplied factory, binds it to a
+    /// keyed <see cref="IKeyValueStore"/> via <see cref="IObjectStoreBinder"/> on first resolve,
+    /// and registers the same instance for every interface the implementation declares.
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="factory">factory used to construct <typeparamref name="TImpl"/> (kept AOT-clean by avoiding reflection)</param>
+    /// <param name="storeKey">(optional) DI service key of the target <see cref="IKeyValueStore"/></param>
+    public static IServiceCollection AddPersistentService<TImpl>(
+        this IServiceCollection services,
+        Func<IServiceProvider, TImpl> factory,
+        object? storeKey = null
+    ) where TImpl : class, INotifyPropertyChanged
+    {
+        services.AddShinyStores();
+        services.AddSingleton<TImpl>(factory);
+        services.OnResolved<TImpl>((instance, sp) =>
+            sp.GetRequiredService<IObjectStoreBinder>().Bind(instance, storeKey)
+        );
+
+        var interfaces = typeof(TImpl)
             .GetInterfaces()
-            .Where(x => 
+            .Where(x =>
                 x != typeof(IDisposable) &&
                 x != typeof(INotifyPropertyChanged)
-            )
-            .ToList();
-        
+            );
+
         foreach (var iface in interfaces)
-            services.AddSingleton(iface, sp => sp.GetRequiredService(implementationType));
+            services.AddSingleton(iface, sp => sp.GetRequiredService<TImpl>());
 
         return services;
     }

@@ -1,4 +1,4 @@
-﻿using Security;
+using Security;
 
 namespace Shiny.Extensions.Stores;
 
@@ -10,10 +10,8 @@ public class SecureKeyValueStore(ISerializer serializer) : IKeyValueStore
     public string Service { get; set; } = $"{NSBundle.MainBundle.BundleIdentifier}.secure";
     public SecAccessible DefaultAccessible { get; set; } = SecAccessible.Always;
 
-
-    public string Alias => "secure";
     public bool IsReadOnly => false;
-    
+
 
     public void Clear()
     {
@@ -31,26 +29,23 @@ public class SecureKeyValueStore(ISerializer serializer) : IKeyValueStore
         {
             using var record = this.GetRecord(key);
             using var match = SecKeyChain.QueryAsRecord(record, out var result);
-
             return result == SecStatusCode.Success;
         }
     }
 
 
-    public object? Get(Type type, string key)
+    public T? Get<T>(string key)
     {
         lock (this.syncLock)
         {
-            object? result = null;
             using var record = this.GetRecord(key);
             using var match = SecKeyChain.QueryAsRecord(record, out var resultCode);
 
-            if (resultCode == SecStatusCode.Success)
-            {
-                var value = NSString.FromData(match!.ValueData!, NSStringEncoding.UTF8);
-                result = serializer.Deserialize(type, value);
-            }
-            return result;
+            if (resultCode != SecStatusCode.Success)
+                return default;
+
+            var value = NSString.FromData(match!.ValueData!, NSStringEncoding.UTF8)!;
+            return serializer.Deserialize<T>(value);
         }
     }
 
@@ -59,29 +54,27 @@ public class SecureKeyValueStore(ISerializer serializer) : IKeyValueStore
     {
         lock (this.syncLock)
         {
-            var removed = false;
             using var record = this.GetRecord(key);
             using var match = SecKeyChain.QueryAsRecord(record, out var result);
-            if (result == SecStatusCode.Success)
-            {
-                result = SecKeyChain.Remove(record);
-                if (result != SecStatusCode.Success)
-                    throw new ArgumentException("Error removing secure value - " + result);
+            if (result != SecStatusCode.Success)
+                return false;
 
-                removed = true;
-            }
-            return removed;
+            result = SecKeyChain.Remove(record);
+            if (result != SecStatusCode.Success)
+                throw new ArgumentException("Error removing secure value - " + result);
+
+            return true;
         }
     }
 
 
-    public void Set(string key, object value)
+    public void Set<T>(string key, T value)
     {
         this.Remove(key);
 
         lock (this.syncLock)
         {
-            var content = serializer.Serialize(value);
+            var content = serializer.Serialize<T>(value);
             var record = new SecRecord(SecKind.GenericPassword)
             {
                 Account = key,

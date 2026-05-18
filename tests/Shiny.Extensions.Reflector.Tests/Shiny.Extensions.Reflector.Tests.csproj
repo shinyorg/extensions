@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GitHubActionsTestLogger">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Shouldly"/>
+        <PackageReference Include="Verify.Xunit"/>
+        <PackageReference Include="Verify.SourceGenerators"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.Reflector.SourceGenerators\Shiny.Extensions.Reflector.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"/>
+        <ProjectReference Include="..\..\src\Shiny.Extensions.Reflector\Shiny.Extensions.Reflector.csproj"/>
+    </ItemGroup>
+
+</Project>

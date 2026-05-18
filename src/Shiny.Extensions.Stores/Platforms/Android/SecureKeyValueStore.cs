@@ -1,4 +1,4 @@
-﻿using Javax.Crypto;
+using Javax.Crypto;
 
 namespace Shiny.Extensions.Stores;
 
@@ -10,73 +10,77 @@ public class SecureKeyValueStore : IKeyValueStore
     readonly AndroidKeyStore keyStore;
     readonly ISerializer serializer;
 
-    // public SecureKeyValueStore(
-    //     ILogger<SecureKeyValueStore> logger,
-    //     AndroidPlatform platform, 
-    //     ISerializer serializer
-    // )
-    // {
-    //     this.settingsStore = new SettingsKeyValueStore(platform, serializer);
-    //     this.serializer = serializer;
-    //
-    //     this.keyStore = new AndroidKeyStore(
-    //         platform.AppContext,
-    //         this.settingsStore,
-    //         logger,
-    //         $"{platform.AppContext.PackageName}.secure",
-    //         false
-    //     );
-    // }
+
+    public SecureKeyValueStore(ISerializer serializer)
+    {
+        this.serializer = serializer;
+        this.settingsStore = new SettingsKeyValueStore(serializer);
+        this.keyStore = new AndroidKeyStore(
+            Application.Context,
+            this.settingsStore,
+            $"{Application.Context.PackageName}.secure",
+            false
+        );
+    }
 
 
-    public string Alias => "secure";
     public bool IsReadOnly => false;
 
 
-    public void Clear()
-    {
-        //this.settingsStore.ToList().Where(x => x.Key.StartsWith("sec-").Clear(); // TODO: only clear secure storage
-        this.settingsStore.Clear();
-    }
+    public void Clear() => this.settingsStore.Clear();
 
 
     public bool Contains(string key) => this.settingsStore.Contains(SecureKey(key));
-    public object? Get(Type type, string key)
-    {
-        // var result = type.GetDefaultValue();
-        object? result = null;
-        var secureKey = SecureKey(key);
 
-        if (this.settingsStore.Contains(secureKey))
+
+    public T? Get<T>(string key)
+    {
+        var secureKey = SecureKey(key);
+        if (!this.settingsStore.Contains(secureKey))
+            return default;
+
+        var encValue = this.settingsStore.Get<string>(secureKey);
+        if (encValue == null)
+            return default;
+
+        var data = Convert.FromBase64String(encValue);
+        lock (this.syncLock)
         {
-            var encValue = this.settingsStore.Get<string>(secureKey);
-            var data = Convert.FromBase64String(encValue);
-            lock (this.syncLock)
+            try
             {
-                try
-                {
-                    var value = this.keyStore.Decrypt(data);
-                    result = serializer.Deserialize(type, value);
-                }
-                catch (AEADBadTagException)
-                {
-                    // unable to decrypt due to app uninstall, removing old key
-                    this.Remove(key);
-                }
+                var value = this.keyStore.Decrypt(data);
+                if (value == null)
+                    return default;
+
+                return this.serializer.Deserialize<T>(value);
+            }
+            catch (AEADBadTagException)
+            {
+                // unable to decrypt due to app uninstall, removing old key
+                this.Remove(key);
+                return default;
             }
         }
-        return result;
     }
 
+
     public bool Remove(string key) => this.settingsStore.Remove(SecureKey(key));
-    public void Set(string key, object value)
+
+
+    public void Set<T>(string key, T value)
     {
-        var content = this.serializer.Serialize(value);
+        if (value is null)
+        {
+            this.Remove(key);
+            return;
+        }
+
+        var content = this.serializer.Serialize<T>(value);
         var data = this.keyStore.Encrypt(content);
         var encValue = Convert.ToBase64String(data);
-        var secureKey = SecureKey(key);
-        this.settingsStore.Set(secureKey, encValue);
+        this.settingsStore.Set(SecureKey(key), encValue);
     }
+
 
     static string SecureKey(string key) => "sec-" + key;
 }

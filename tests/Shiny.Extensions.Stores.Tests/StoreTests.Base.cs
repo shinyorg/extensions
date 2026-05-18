@@ -1,4 +1,4 @@
-﻿namespace Shiny.Extensions.Stores.Tests;
+namespace Shiny.Extensions.Stores.Tests;
 
 
 public partial class StoreTests
@@ -10,10 +10,10 @@ public partial class StoreTests
         this.currentStore = store;
         this.currentStore.Set("Test", "1");
         this.currentStore.Set("Test", "2");
-        this.currentStore.Get(typeof(string), "Test").ShouldBe("2");
+        this.currentStore.Get<string>("Test").ShouldBe("2");
     }
 
-    
+
     [Theory(DisplayName = "Stores - Contains")]
     [MemberData(nameof(Data))]
     public void ContainsTest(IKeyValueStore store)
@@ -26,7 +26,6 @@ public partial class StoreTests
     }
 
 
-    
     [Theory(DisplayName = "Stores - Remove")]
     [MemberData(nameof(Data))]
     public void RemoveTest(IKeyValueStore store)

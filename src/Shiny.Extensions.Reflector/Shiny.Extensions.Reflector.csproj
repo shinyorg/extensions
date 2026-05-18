@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <Description>A high speed reflection library... without the actual reflection</Description>
+        <PackageTags>shiny reflection sourcegeneration</PackageTags>
+        <RootNamespace>Shiny.Extensions.Reflector</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="build\Package.targets"
+              PackagePath="build\Shiny.Extensions.Reflector.SourceGenerators.targets"
+              Pack="true"/>
+
+        <None Include="build\Package.targets"
+              PackagePath="build\Shiny.Extensions.Reflector.targets"
+              Pack="true"/>
+
+        <None Include="build\Package.targets"
+              PackagePath="buildTransitive\Shiny.Extensions.Reflector.SourceGenerators.targets"
+              Pack="true"/>
+
+        <None Include="build\Package.targets"
+              PackagePath="buildTransitive\Shiny.Extensions.Reflector.targets"
+              Pack="true"/>
+
+        <None Include="..\Shiny.Extensions.Reflector.SourceGenerators\bin\Release\netstandard2.0\Shiny.Extensions.Reflector.SourceGenerators.dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false"/>
+    </ItemGroup>
+</Project>

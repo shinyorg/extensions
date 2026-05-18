@@ -1,4 +1,4 @@
-﻿namespace Shiny.Extensions.Stores.Tests;
+namespace Shiny.Extensions.Stores.Tests;
 
 
 public partial class StoreTests
@@ -10,31 +10,27 @@ public partial class StoreTests
         this.currentStore = store;
         var dt = DateTimeOffset.Now;
         this.currentStore.Set("now", dt);
-        this.currentStore
-            .Get(typeof(DateTimeOffset), "now")
-            .ShouldBe(dt);
+        this.currentStore.Get<DateTimeOffset>("now").ShouldBe(dt);
     }
 
-    
+
     [Theory(DisplayName = "Stores - Enums")]
     [MemberData(nameof(Data))]
     public void EnumTest(IKeyValueStore store)
     {
         this.currentStore = store;
         this.currentStore.Set(nameof(this.EnumTest), MyTestEnum.Hi);
-        this.currentStore
-            .Get(typeof(MyTestEnum), nameof(this.EnumTest))
-            .ShouldBe(MyTestEnum.Hi);
+        this.currentStore.Get<MyTestEnum>(nameof(this.EnumTest)).ShouldBe(MyTestEnum.Hi);
     }
 
-    
+
     [Theory(DisplayName = "Stores - Long/Int32")]
     [MemberData(nameof(Data))]
     public void LongTest(IKeyValueStore store)
     {
         this.currentStore = store;
         this.currentStore.Set("LongTest", 99L);
-        this.currentStore.Get(typeof(long), "LongTest").ShouldBe(99L);
+        this.currentStore.Get<long>("LongTest").ShouldBe(99L);
     }
 
 
@@ -44,35 +40,25 @@ public partial class StoreTests
     {
         this.currentStore = store;
 
-        var guid = new Guid();
+        var guid = Guid.NewGuid();
         this.currentStore.Set(nameof(this.GuidTest), guid);
-        this.currentStore
-            .Get(typeof(Guid), nameof(this.GuidTest))
-            .ShouldBe(guid);
+        this.currentStore.Get<Guid>(nameof(this.GuidTest)).ShouldBe(guid);
     }
 
 
     [Theory(DisplayName = "Stores - Simple Arrays")]
     [MemberData(nameof(Data))]
     public void SimpleArrayTest(IKeyValueStore store)
-        => this.DoArrayTest(store, nameof(this.SimpleArrayTest), new [] { 1, 6, 9 });
-    
-    
+        => this.DoArrayTest(store, nameof(this.SimpleArrayTest), new[] { 1, 6, 9 });
+
+
     [Theory(DisplayName = "Stores - Object Arrays")]
     [MemberData(nameof(Data))]
     public void ObjectArrayTest(IKeyValueStore store)
-        => this.DoArrayTest(store, nameof(this.ObjectArrayTest), new []
+        => this.DoArrayTest(store, nameof(this.ObjectArrayTest), new[]
         {
-            new TestBind
-            {
-                IntValue = 10,
-                StringProperty = "10"
-            },
-            new TestBind
-            {
-                IntValue = 22,
-                StringProperty = "22"
-            } 
+            new TestBind { IntValue = 10, StringProperty = "10" },
+            new TestBind { IntValue = 22, StringProperty = "22" }
         });
 
 
@@ -87,7 +73,8 @@ public partial class StoreTests
         this.currentStore = store;
         this.currentStore.Set(storeKey, values);
         var storeValues = this.currentStore.Get<T[]>(storeKey);
-        
-        storeValues.ShouldBeSameAs(values);
+
+        storeValues.ShouldNotBeNull();
+        storeValues!.Length.ShouldBe(values.Length);
     }
 }

@@ -1,9 +1,8 @@
-﻿namespace Shiny.Extensions.Stores;
+namespace Shiny.Extensions.Stores;
 
 
 public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
 {
-    public string Alias => "settings";
     public bool IsReadOnly => false;
 
 
@@ -15,82 +14,63 @@ public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
 
 
     public bool Contains(string key)
-        => this.GetValue(false, x => x.ValueForKey(new NSString(key)) != null);
+        => this.GetValue(prefs => prefs.ValueForKey(new NSString(key)) != null);
 
 
-    public object? Get(Type type, string key) => this.GetValue(false, prefs =>
+    public T? Get<T>(string key) => this.GetValue<T?>(prefs =>
     {
-        // if (prefs.ValueForKey(new NSString(key)) == null)
-        //     return type.GetDefaultValue();
+        if (prefs.ValueForKey(new NSString(key)) == null)
+            return default;
 
-        return Type.GetTypeCode(type) switch
+        return Type.GetTypeCode(typeof(T)) switch
         {
-            TypeCode.Boolean => prefs.BoolForKey(key),
-            TypeCode.Double => prefs.DoubleForKey(key),
-            TypeCode.Int32 => (int)prefs.IntForKey(key),
-            TypeCode.Single => (float)prefs.FloatForKey(key),
-            TypeCode.String => prefs.StringForKey(key),
-            _ => serializer.Deserialize(type, prefs.StringForKey(key))
+            TypeCode.Boolean => (T)(object)prefs.BoolForKey(key),
+            TypeCode.Double  => (T)(object)prefs.DoubleForKey(key),
+            TypeCode.Int32   => (T)(object)(int)prefs.IntForKey(key),
+            TypeCode.Single  => (T)(object)prefs.FloatForKey(key),
+            TypeCode.String  => (T)(object)(prefs.StringForKey(key) ?? string.Empty),
+            _                => serializer.Deserialize<T>(prefs.StringForKey(key) ?? string.Empty)
         };
     });
 
 
-    public bool Remove(string key) => this.GetValue(true, prefs =>
+    public bool Remove(string key) => this.GetValue(prefs =>
     {
-        var removed = false;
+        if (prefs.ValueForKey(new NSString(key)) == null)
+            return false;
 
-        if (prefs.ValueForKey(new NSString(key)) != null)
-        {
-            prefs.RemoveObject(key);
-            removed = true;
-        }
-        return removed;
+        prefs.RemoveObject(key);
+        return true;
     });
 
 
-    public void Set(string key, object value) => this.Do(prefs =>
+    public void Set<T>(string key, T value) => this.Do(prefs =>
     {
-        var typeCode = Type.GetTypeCode(value.GetType());
-        switch (typeCode)
+        switch (value)
         {
-            case TypeCode.Boolean:
-                prefs.SetBool((bool)value, key);
-                break;
-
-            case TypeCode.Double:
-                prefs.SetDouble((double)value, key);
-                break;
-
-            case TypeCode.Int32:
-                prefs.SetInt((int)value, key);
-                break;
-
-            case TypeCode.String:
-                prefs.SetString((string)value, key);
-                break;
-            
+            case bool b:   prefs.SetBool(b, key); break;
+            case double d: prefs.SetDouble(d, key); break;
+            case int i:    prefs.SetInt(i, key); break;
+            case float f:  prefs.SetFloat(f, key); break;
+            case string s: prefs.SetString(s, key); break;
+            case null:     prefs.RemoveObject(key); break;
             default:
-                var @string = serializer.Serialize(value);
-                prefs.SetString(@string, key);
+                prefs.SetString(serializer.Serialize<T>(value), key);
                 break;
         }
     });
 
 
     readonly object syncLock = new();
-    protected virtual T GetValue<T>(bool flush, Func<NSUserDefaults, T> getter)
+
+    protected virtual T GetValue<T>(Func<NSUserDefaults, T> getter)
     {
         lock (this.syncLock)
         {
             using var native = NSUserDefaults.StandardUserDefaults;
-            var result = getter(native);
-            if (flush)
-                native.Synchronize();
-
-            return result;
+            return getter(native);
         }
     }
-
 
     protected virtual void Do(Action<NSUserDefaults> action)
     {
