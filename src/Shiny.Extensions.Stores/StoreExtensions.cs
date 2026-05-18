@@ -104,24 +104,21 @@ public static class StoreExtensions
 
 
     /// <summary>
-    /// Chains a binding step onto the most recently registered service. When the service is first resolved
-    /// and the produced instance implements <see cref="INotifyPropertyChanged"/>, the instance is bound to
-    /// the object store via <see cref="IObjectStoreBinder"/>. If the instance does not implement
-    /// <see cref="INotifyPropertyChanged"/> the step is a no-op.
+    /// Chains a binding step onto the most recently registered service. On first resolve the instance is
+    /// bound to the object store via <see cref="IObjectStoreBinder"/>.
     /// </summary>
     /// <remarks>
-    /// The preceding registration must be factory-based - see <see cref="DIExtensions.OnResolved{TService}"/>.
+    /// The preceding registration's <c>ServiceType</c> must implement <see cref="INotifyPropertyChanged"/>
+    /// and must be factory-based - see <see cref="DIExtensions.OnResolved{TService}"/>.
     /// </remarks>
     /// <param name="services"></param>
     /// <param name="storeKey">(optional) DI service key of the target <see cref="IKeyValueStore"/></param>
     public static IServiceCollection BindOnResolve(this IServiceCollection services, object? storeKey = null)
     {
         services.AddShinyStores();
-        return services.OnResolved<object>((instance, sp) =>
-        {
-            if (instance is INotifyPropertyChanged npc)
-                sp.GetRequiredService<IObjectStoreBinder>().Bind(npc, storeKey);
-        });
+        return services.OnResolved<INotifyPropertyChanged>((instance, sp) =>
+            sp.GetRequiredService<IObjectStoreBinder>().Bind(instance, storeKey)
+        );
     }
 
 
