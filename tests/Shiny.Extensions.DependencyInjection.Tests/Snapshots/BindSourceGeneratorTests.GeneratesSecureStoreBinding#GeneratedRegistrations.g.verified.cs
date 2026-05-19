@@ -13,7 +13,6 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddSingleton<global::TestNamespace.IMyService>(sp => new global::TestNamespace.MyService());
 
         return services;
     }

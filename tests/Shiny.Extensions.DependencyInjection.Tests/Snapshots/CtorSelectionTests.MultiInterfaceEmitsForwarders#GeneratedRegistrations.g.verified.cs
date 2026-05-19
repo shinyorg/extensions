@@ -13,7 +13,9 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddSingleton<global::TestNamespace.IMyService>(sp => new global::TestNamespace.MyService());
+        services.AddSingleton<global::TestNamespace.MyService>(sp => new global::TestNamespace.MyService());
+        services.AddSingleton<global::TestNamespace.IFoo>(sp => sp.GetRequiredService<global::TestNamespace.MyService>());
+        services.AddSingleton<global::TestNamespace.IBar>(sp => sp.GetRequiredService<global::TestNamespace.MyService>());
 
         return services;
     }

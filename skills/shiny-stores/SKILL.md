@@ -1,29 +1,28 @@
 ---
 name: shiny-stores
-description: Generate and configure Shiny Stores for .NET - cross-platform key/value stores with persistent service binding for mobile, desktop, and Blazor WebAssembly
+description: Generate and configure Shiny Stores for .NET - cross-platform key/value stores with source-generated property binding for mobile, desktop, and Blazor WebAssembly
 auto_invoke: true
 triggers:
   - IKeyValueStore
-  - IObjectStoreBinder
-  - IKeyValueStoreFactory
   - AddShinyStores
-  - AddPersistentService
-  - ObjectStoreBinderAttribute
   - AddShinyWebAssemblyStores
+  - StoreKeys
+  - Shiny.Stores
+  - BindAttribute
   - Shiny.Extensions.Stores
   - Shiny.Extensions.Stores.Web
 ---
 
 # Shiny Stores Skill
 
-You are an expert in Shiny Extensions Stores, a .NET library providing cross-platform key/value store abstraction with persistent service binding.
+You are an expert in Shiny Extensions Stores, a .NET library providing cross-platform key/value store abstraction with source-generated property binding.
 
 ## When to Use This Skill
 
 Invoke this skill when the user wants to:
 - Use cross-platform key/value stores (settings, secure storage, memory)
-- Bind `INotifyPropertyChanged` objects to persistent storage
-- Use key/value stores in Blazor WebAssembly (localStorage, sessionStorage)
+- Persist properties to a backing store using the `[Bind]` source generator
+- Use key/value stores in Blazor WebAssembly (localStorage)
 - Create custom key/value store implementations
 
 ## Library Overview
@@ -32,81 +31,80 @@ Invoke this skill when the user wants to:
 **Repository**: https://github.com/shinyorg/Shiny.Extensions
 **Packages**: `Shiny.Extensions.Stores`, `Shiny.Extensions.Stores.Web`
 
-## Built-in Store Aliases
+## Built-in Store Keys
 
-| Alias | Platform | Implementation |
-|-------|----------|---------------|
-| `"memory"` | All | In-memory dictionary |
-| `"settings"` | Android | SharedPreferences |
-| `"settings"` | iOS/macOS | NSUserDefaults |
-| `"settings"` | Windows | ApplicationData.LocalSettings |
-| `"settings"` | Blazor | localStorage |
-| `"secure"` | Android | EncryptedSharedPreferences |
-| `"secure"` | iOS/macOS | Keychain |
-| `"session"` | Blazor | sessionStorage |
+Stores are registered as **keyed** singletons in DI using `StoreKeys` constants:
+
+| Key | Platform | Implementation |
+|-----|----------|---------------|
+| `StoreKeys.Default` ("settings") | Android | SharedPreferences |
+| `StoreKeys.Default` ("settings") | iOS/macOS | NSUserDefaults |
+| `StoreKeys.Default` ("settings") | Windows | ApplicationData.LocalSettings |
+| `StoreKeys.Default` ("settings") | Blazor | localStorage |
+| `StoreKeys.Secure` ("secure") | Android | EncryptedSharedPreferences |
+| `StoreKeys.Secure` ("secure") | iOS/macOS | Keychain |
 
 ## Setup
 
 ```csharp
-// Mobile/Desktop - registers memory, settings, and secure stores
+// Mobile/Desktop - registers platform-native stores + a hosted initializer for the static Shiny.Stores accessor
 services.AddShinyStores();
 
-// Blazor WebAssembly - adds localStorage and sessionStorage
+// Blazor WebAssembly
 services.AddShinyWebAssemblyStores();
 ```
 
-## Using Stores Directly
+## Static `Shiny.Stores` Accessor
+
+The simplest way to read/write — backed by a hosted initializer that populates the static after the service provider is built.
 
 ```csharp
-// Via IKeyValueStoreFactory
-public class MyService(IKeyValueStoreFactory storeFactory)
-{
-    public void SaveSetting(string key, string value)
-    {
-        var store = storeFactory.GetStore("settings");
-        store.Set(key, value);
-    }
+Shiny.Stores.Default.Set("theme", "dark");
+var theme = Shiny.Stores.Default.Get<string>("theme");
 
-    public T GetSetting<T>(string key, T defaultValue = default)
-    {
-        var store = storeFactory.DefaultStore;
-        return store.Get<T>(key, defaultValue);
-    }
+Shiny.Stores.Secure.Set("token", "abc123");
+
+// Arbitrary keyed stores
+Shiny.Stores.Keyed("my-store").Set("k", "v");
+```
+
+For host-less scenarios (unit tests, console apps without `IHost`), call `Shiny.Stores.Initialize(serviceProvider)` after `BuildServiceProvider()`.
+
+## DI-Style Access
+
+```csharp
+public class SettingsService(
+    [FromKeyedServices(StoreKeys.Default)] IKeyValueStore settings,
+    [FromKeyedServices(StoreKeys.Secure)] IKeyValueStore secure
+)
+{
+    public void SaveTheme(string theme) => settings.Set("theme", theme);
+    public string GetTheme() => settings.Get<string>("theme") ?? "light";
 }
 ```
 
-## Persistent Services (Object-Store Binding)
+## Source-Generated `[Bind]` Properties
 
-Bind `INotifyPropertyChanged` objects to a store so property changes are automatically persisted:
+The DI source generator (from `Shiny.Extensions.DependencyInjection`) recognizes `[Bind]` on partial properties and emits getter/setter bodies that round-trip through the static `Shiny.Stores` accessor.
 
 ```csharp
-// Register a persistent service
-services.AddPersistentService<AppSettings>();                    // Uses default store
-services.AddPersistentService<SecureSettings>("secure");         // Uses secure store
+using Shiny;
 
-// The class
-public class AppSettings : INotifyPropertyChanged
+[Singleton]
+public partial class AppSettings
 {
-    string theme = "light";
-    public string Theme
-    {
-        get => theme;
-        set { theme = value; OnPropertyChanged(); }
-    }
+    [Bind]                                   // default store
+    public partial string Theme { get; set; }
 
-    // ... INotifyPropertyChanged implementation
+    [Bind("secure")]                         // secure store
+    public partial string Token { get; set; }
+
+    [Bind(Key = "ui_density")]               // override storage key
+    public partial int Density { get; set; }
 }
 ```
 
-You can also target a specific store with the attribute:
-
-```csharp
-[ObjectStoreBinder("secure")]
-public class SecureSettings : INotifyPropertyChanged
-{
-    // Properties are automatically persisted to the secure store
-}
-```
+No `INotifyPropertyChanged`, no runtime reflection. Generated property bodies call `Shiny.Stores.Default/Secure/Keyed(...).Get<T>(...)` and `.Set(...)`.
 
 ## Store Extension Methods
 
@@ -121,12 +119,13 @@ store.IncrementValue(key);              // Thread-safe integer increment
 ## Code Generation Instructions
 
 - Use `AddShinyStores()` for mobile/desktop, `AddShinyWebAssemblyStores()` for Blazor
-- Use `AddPersistentService<T>()` for auto-persisting settings classes
-- Always implement `INotifyPropertyChanged` for persistent services
-- Specify the store alias when targeting secure storage
+- For persistent settings, prefer `[Singleton]` + `[Bind]` partial properties over manual `Set`/`Get` calls
+- The class with `[Bind]` properties must be `partial`; properties must also be `partial`
+- For sensitive data (tokens, credentials), pass `"secure"` to `[Bind("secure")]`
+- Use `Shiny.Stores.Default`/`Secure`/`Keyed(...)` for direct ad-hoc access
 
 ## Best Practices
 
-1. **Use persistent services** - For app settings that should survive restarts, use `AddPersistentService<T>()`
-2. **Target secure store** - Always use the `"secure"` store alias for sensitive data (tokens, credentials)
-3. **Use Shiny Reflector** - Mark persistent service classes with `[Reflector]` and make them `partial` to bypass reflection for faster binding
+1. **Use `[Bind]` for settings classes** — eliminates boilerplate, no INPC needed, AOT-clean
+2. **Target the secure store** — always use `[Bind("secure")]` for sensitive values
+3. **Don't initialize manually in production** — `AddShinyStores()` registers a hosted initializer; only call `Shiny.Stores.Initialize(...)` in tests

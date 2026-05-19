@@ -13,7 +13,7 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddSingleton<global::TestNamespace.MyMultiInterfaceAsSelfService>();
+        services.AddSingleton<global::TestNamespace.MyMultiInterfaceAsSelfService>(sp => new global::TestNamespace.MyMultiInterfaceAsSelfService());
 
         return services;
     }

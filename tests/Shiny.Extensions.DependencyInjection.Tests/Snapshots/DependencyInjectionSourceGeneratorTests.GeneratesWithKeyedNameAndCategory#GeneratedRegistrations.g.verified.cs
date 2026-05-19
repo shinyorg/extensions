@@ -15,7 +15,7 @@ public static class __GeneratedRegistrations
     {
         if (categories?.Any(x => x.Equals("MyCategory", global::System.StringComparison.OrdinalIgnoreCase)) == true)
         {
-            services.AddKeyedScoped<global::TestNamespace.IMyService, global::TestNamespace.MyKeyedCategorizedService>("MyKey");
+            services.AddKeyedScoped<global::TestNamespace.IMyService>("MyKey", (sp, _) => new global::TestNamespace.MyKeyedCategorizedService());
         }
 
         return services;

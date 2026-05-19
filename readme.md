@@ -3,10 +3,11 @@
 ## Dependency Injection Extensions
 
 * Source generate all attributed classes to a single add file - saves you the boilerplate
-* Extension methods for registering a dependency against multiple interfaces
-* Supports multiple interfaces
-* Supports open generics
-* Supports keyed services
+* **Factory-form emission** - generated registrations expand the constructor at compile time (no reflection, AOT-clean) so resolve chains like `OnResolved` compose naturally
+* `ActivatorUtilities`-style constructor selection (`[ActivatorUtilitiesConstructor]` and `[FromKeyedServices]` honored)
+* Multiple interfaces via explicit forwarders (no reflection)
+* Supports open generics and keyed services
+* `OnResolved<T>(hook)` chain extension for one-shot post-construction hooks
 
 ### The Results
 
@@ -90,39 +91,59 @@ namespace Sample
 3. Add the `[Service(ServiceLifetime.Singleton, "optional key")]` attribute to your classes and specify the lifetime and optional key
 
 ## Stores
-* Key/value store with support for
+* Cross-platform key/value store with support for
   * Android/iOS/Windows - Preferences & Secure Storage
-  * Web - Local Storage & Session Storage
+  * Web - Local Storage
   * In Memory
-* Object binder binds INotifyPropertyChanged against a key/value store to persist object changes across sessions
-* Simply implement IKeyValueStore to create your own store
+* Source-generated `[Bind]` attribute on partial properties - emits getter/setter bodies that round-trip through the store (no INPC required, no runtime reflection, fully AOT)
+* Static `Shiny.Stores.Default/Secure/Keyed(...)` accessor for direct ad-hoc reads/writes
+* Implement `IKeyValueStore` to plug in your own store
 
 ### Setup
 
 1. Install the NuGet package `Shiny.Extensions.Stores`
-2. Add the following using directive:
-  ```csharp
-  // during your app startup - use your service collection 
-  
-  builder.Services.AddPersistentService<MyNotifyPropertyChangedObject>("secure"); // optional: default to `settings`
-  ```
-3. Inject the MyNotifyPropertyChangedObject into your view model or service.  Set properties and they will be persisted automatically.
-4. To bypass reflection and make binding super fast - use [Shiny Reflector](https://github.com/shinyorg/reflector) to remove the need for reflection.  It is already built into the Shiny.Extensions.Stores package, so you can use it directly.  Just mark `[Reflector]` on your class and make your class partial.
+2. Register at startup:
+   ```csharp
+   builder.Services.AddShinyStores();
+   ```
+3. Define your settings as a `partial` class with `[Bind]` partial properties:
+   ```csharp
+   using Shiny;
+
+   [Singleton]
+   public partial class AppSettings
+   {
+       [Bind]                       // default store
+       public partial string Theme { get; set; }
+
+       [Bind("secure")]             // secure store
+       public partial string Token { get; set; }
+   }
+   ```
+4. Inject `AppSettings` anywhere. Set properties — they persist. Read properties — they come from the store.
+
+Or skip the class and use the static accessor:
+```csharp
+Shiny.Stores.Default.Set("theme", "dark");
+var theme = Shiny.Stores.Default.Get<string>("theme");
+```
 
 ### Available Stores Per Platform
 
-| Platform     | Store Alias | Description                         |
-|--------------|-------------|-------------------------------------|
-| Android      | settings    | Preferences store                   |
-| Android      | secure      | Secure Storage                      |
-| iOS          | settings    | Preferences store                   |
-| iOS          | secure      | Secure Storage                      |
-| WebAssembly  | settings    | Local Storage                       |
-| WebAssembly  | session     | Session Storage                     |
-| All          | Memory      | In Memory store - great for testing |
+| Platform     | Key                  | Description                         |
+|--------------|----------------------|-------------------------------------|
+| Android      | `StoreKeys.Default`  | Preferences                         |
+| Android      | `StoreKeys.Secure`   | Secure Storage                      |
+| iOS          | `StoreKeys.Default`  | NSUserDefaults                      |
+| iOS          | `StoreKeys.Secure`   | Keychain                            |
+| Windows      | `StoreKeys.Default`  | ApplicationData.LocalSettings       |
+| Windows      | `StoreKeys.Secure`   | Secure Storage                      |
+| WebAssembly  | `StoreKeys.Default`  | localStorage                        |
+| WebAssembly  | `"session"`          | sessionStorage                      |
+| All          | any                  | In-memory dictionary (great for testing) |
 
 > [!NOTE]
-> For WebAssembly, install the `Shiny.Extensions.Stores.Web` package and add `services.AddWebAssemblyStores()` to your service collection.
+> For WebAssembly, install the `Shiny.Extensions.Stores.Web` package and add `services.AddShinyWebAssemblyStores()` to your service collection.
 
 ## Web Hosting Extensions
 * Merges service container build and post build scenarios into a single class using `IWebModule`

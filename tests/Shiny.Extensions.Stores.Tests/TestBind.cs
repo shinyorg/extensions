@@ -1,26 +1,8 @@
-﻿namespace Shiny.Extensions.Stores.Tests;
+namespace Shiny.Extensions.Stores.Tests;
 
 
-[Reflector]
-public partial class TestBind : ObservableObject
+public class TestBind
 {
-    [ObservableProperty]
-    public partial string? StringProperty { get; set; }
-
-    [ObservableProperty]
-    public partial Guid? NullableProperty { get; set; }
-
-    [ObservableProperty]
-    public partial int IntValue { get; set; }
-
-    [ObservableProperty]
-    public partial string? ProtectedGetterProperty { get; set; }
-
-    [ObservableProperty]
-    public partial string? ProtectedSetterProperty { get; protected set; }
-
-    public void SetProtectedProperty(string? value)
-    {
-        this.ProtectedSetterProperty = value;
-    }
+    public string? StringProperty { get; set; }
+    public int IntValue { get; set; }
 }

@@ -18,7 +18,6 @@ public interface ISerializer
 
     /// <summary>
     /// Deserializes a string to the specified runtime type.
-    /// Used by <see cref="IObjectStoreBinder"/> for property-typed binding.
     /// </summary>
     object? Deserialize(Type type, string value);
 

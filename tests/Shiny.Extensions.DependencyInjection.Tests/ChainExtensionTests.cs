@@ -128,6 +128,20 @@ public class ChainExtensionTests
 
 
     [Fact]
+    public void ActionOverloadFiresWithoutServiceProvider()
+    {
+        var fires = 0;
+        var sp = new ServiceCollection()
+            .AddSingleton<IThing>(_ => new Thing())
+            .OnResolved<IThing>(_ => fires++)
+            .BuildServiceProvider();
+
+        sp.GetRequiredService<IThing>();
+        Assert.Equal(1, fires);
+    }
+
+
+    [Fact]
     public void HookCanAccessServiceProvider()
     {
         var seen = false;

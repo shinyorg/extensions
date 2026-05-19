@@ -11,6 +11,8 @@ triggers:
   - AddGeneratedServices
   - AddSingletonAsImplementedInterfaces
   - AddScopedAsImplementedInterfaces
+  - OnResolved
+  - BindAttribute
   - Shiny.Extensions.DependencyInjection
 ---
 
@@ -111,6 +113,53 @@ bool hasImpl = services.HasImplementation<MyService>();
 
 // Lazy resolution
 Lazy<IMyService> lazy = services.GetLazyService<IMyService>(required: true);
+```
+
+## Factory-Form Generation
+
+Every `[Service]`/`[Singleton]`/`[Scoped]`/`[Transient]` attributed class is emitted in **factory form** — the source generator expands the constructor at compile time so registrations are AOT-clean and chain-friendly. Constructor selection mirrors `ActivatorUtilities`: `[ActivatorUtilitiesConstructor]` wins, otherwise the longest constructor is chosen. `[FromKeyedServices("k")]` and `IServiceProvider` parameters are handled. Multi-interface classes get explicit forwarders (no `AddSingletonAsImplementedInterfaces` reflection).
+
+```csharp
+[Singleton]
+public class MyService(IDep dep) : IMyService { }
+
+// Generated:
+// services.AddSingleton<IMyService>(sp => new MyService(sp.GetRequiredService<IDep>()));
+```
+
+## Resolve Chains
+
+Chain a callback onto the most recently registered factory-based service. Fires once per factory invocation (singleton → once; scoped → per-scope; transient → every resolve). Fully AOT-clean — wraps the factory, no reflection. Type-based and pre-built instance registrations are rejected (but generator-emitted registrations are always factory form, so this just works).
+
+```csharp
+// With IServiceProvider
+services
+    .AddSingleton<IFoo>(sp => new Foo())
+    .OnResolved<IFoo>((foo, sp) => foo.Configure(sp.GetRequiredService<IOptions>()));
+
+// Without IServiceProvider (Action<TService> overload)
+services
+    .AddSingleton<IFoo>(sp => new Foo())
+    .OnResolved<IFoo>(foo => foo.Initialize());
+```
+
+## [Bind] — Store-Backed Properties
+
+Mark a `partial` property `[Bind]` on a `partial` class. The generator emits the property body that reads/writes a Shiny key/value store via the static `Shiny.Stores` accessor (requires `Shiny.Extensions.Stores`). No `INotifyPropertyChanged`, no reflection, AOT-clean.
+
+```csharp
+[Singleton]
+public partial class AppSettings
+{
+    [Bind]                                   // default store
+    public partial string Theme { get; set; }
+
+    [Bind("secure")]                         // secure store
+    public partial string Token { get; set; }
+
+    [Bind(Key = "ui_density")]               // override storage key (defaults to property name)
+    public partial int Density { get; set; }
+}
 ```
 
 ## Code Generation Instructions

@@ -162,6 +162,23 @@ public static class DIExtensions
         });
     }
 
+
+    /// <summary>
+    /// Chains a hook onto the most recently registered service. Overload for cases where the hook
+    /// does not need the <see cref="IServiceProvider"/> - e.g. calling an initialize method on the
+    /// resolved instance.
+    /// </summary>
+    /// <remarks>
+    /// See <see cref="OnResolved{TService}(IServiceCollection, Action{TService, IServiceProvider})"/>
+    /// for lifetime, AOT, and validation behavior.
+    /// </remarks>
+    public static IServiceCollection OnResolved<TService>(
+        this IServiceCollection services,
+        Action<TService> hook
+    ) where TService : class
+        => services.OnResolved<TService>((instance, _) => hook(instance));
+
+
     static IServiceCollection WrapLast(
         this IServiceCollection services,
         Func<object, IServiceProvider, object> hook

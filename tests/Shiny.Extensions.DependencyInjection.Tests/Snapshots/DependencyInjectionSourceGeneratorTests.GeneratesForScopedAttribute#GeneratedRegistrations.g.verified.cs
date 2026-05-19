@@ -13,7 +13,7 @@ public static class __GeneratedRegistrations
         params string[] categories
     )
     {
-        services.AddScoped<global::TestNamespace.IMyService, global::TestNamespace.MyScopedService>();
+        services.AddScoped<global::TestNamespace.IMyService>(sp => new global::TestNamespace.MyScopedService());
 
         return services;
     }

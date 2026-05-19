@@ -50,6 +50,20 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             aiToolData,
             static (spc, source) => ExecuteAIToolGeneration(source.Left.Left, source.Left.Right!, source.Right, spc)
         );
+
+        // Find classes with [Bind] properties for store-binding generation
+        var bindClasses = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (s, _) => IsBindSyntaxTarget(s),
+                transform: static (ctx, _) => GetBindClassInfo(ctx)
+            )
+            .Where(static m => m is not null)
+            .Collect();
+
+        context.RegisterSourceOutput(
+            bindClasses,
+            static (spc, source) => ExecuteBindGeneration(source!, spc)
+        );
     }
 
     static bool IsSyntaxTargetForGeneration(SyntaxNode node) => 
@@ -266,7 +280,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         // Check if this is an open generic type (has type parameters)
         var isOpenGeneric = typeSymbol.IsGenericType;
         var genericArity = isOpenGeneric ? typeSymbol.Arity : 0;
-        
+
+        var ctorParams = isOpenGeneric ? [] : ExtractCtorParams(typeSymbol);
+
         return new ServiceInfo
         {
             ClassName = typeSymbol.Name,
@@ -282,8 +298,61 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             GenericArity = genericArity,
             SpecificType = specificType,
             AttributeLocation = attributeLocation,
-            HasConflictingConfiguration = asSelf && !string.IsNullOrEmpty(specificType)
+            HasConflictingConfiguration = asSelf && !string.IsNullOrEmpty(specificType),
+            CtorParams = ctorParams
         };
+    }
+
+    static List<CtorParam> ExtractCtorParams(INamedTypeSymbol typeSymbol)
+    {
+        var ctors = typeSymbol.InstanceConstructors
+            .Where(c => c.DeclaredAccessibility == Accessibility.Public)
+            .ToList();
+
+        if (ctors.Count == 0)
+            return [];
+
+        // [ActivatorUtilitiesConstructor] wins; else the ctor with the most parameters
+        var picked = ctors.FirstOrDefault(c =>
+                c.GetAttributes().Any(a =>
+                    a.AttributeClass?.ToDisplayString() == "Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructorAttribute"
+                ))
+            ?? ctors.OrderByDescending(c => c.Parameters.Length).First();
+
+        var result = new List<CtorParam>(picked.Parameters.Length);
+        foreach (var param in picked.Parameters)
+        {
+            var ns = param.Type.ContainingNamespace?.ToDisplayString() ?? "";
+            var typeName = param.Type.ToDisplayString();
+            // ToDisplayString often returns the bare type name (no namespace); prepend explicitly
+            var qualifiedName = string.IsNullOrEmpty(ns) || ns == "<global namespace>"
+                ? $"global::{typeName}"
+                : (typeName.Contains(".") ? $"global::{typeName}" : $"global::{ns}.{typeName}");
+            // System.IServiceProvider is special-cased to pass the `sp` factory parameter directly.
+            // Some compilations don't surface the namespace (returns global/empty), so we accept either.
+            var isServiceProvider = param.Type.Name == "IServiceProvider" &&
+                (ns == "System" || string.IsNullOrEmpty(ns) || ns == "<global namespace>");
+
+            string? keyedExpr = null;
+            var fromKeyed = param.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute");
+            if (fromKeyed is { ConstructorArguments.Length: > 0 })
+            {
+                var keyVal = fromKeyed.ConstructorArguments[0].Value;
+                if (keyVal is string s)
+                    keyedExpr = "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+                else if (keyVal != null)
+                    keyedExpr = keyVal.ToString();
+            }
+
+            result.Add(new CtorParam
+            {
+                FullTypeName = qualifiedName,
+                IsServiceProvider = isServiceProvider,
+                KeyedKeyExpression = keyedExpr
+            });
+        }
+        return result;
     }
 
     static void Execute(Compilation compilation, ImmutableArray<ServiceInfo?> services, AnalyzerConfigOptionsProvider configOptions, SourceProductionContext context)
@@ -443,96 +512,74 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
 
         if (service.IsOpenGeneric)
         {
-            // Convert full generic type names to open generic syntax for typeof()
+            // Open generics retain type-based registration — ctor expansion isn't possible without concrete type args
             var openGenericClassName = ConvertToOpenGenericSyntax(service.FullClassName, service.GenericArity);
             var openGenericInterfaces = service.Interfaces
                 .Select(i => ConvertToOpenGenericSyntax(i, GetGenericArityFromTypeName(i)))
                 .ToList();
-            
-            // Open generic registration using typeof()
+
             if (service.KeyedName != null)
             {
-                // Keyed open generic registration
                 if (service.Interfaces.Count == 0)
-                {
-                    // Implementation only
                     sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
-                }
                 else if (service.Interfaces.Count == 1)
-                {
-                    // Single interface
                     sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
-                }
                 else
-                {
-                    // Multiple interfaces - register as implementation only for keyed services
                     sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}(typeof(global::{openGenericClassName}), \"{service.KeyedName}\");");
-                }
             }
             else
             {
-                // Non-keyed open generic registration
                 if (service.Interfaces.Count == 0)
-                {
-                    // Implementation only
                     sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericClassName}));");
-                }
                 else if (service.Interfaces.Count == 1)
-                {
-                    // Single interface
                     sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[0]}), typeof(global::{openGenericClassName}));");
-                }
                 else
                 {
-                    // Multiple interfaces - register for each interface
                     for (int i = 0; i < service.Interfaces.Count; i++)
-                    {
                         sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}(typeof(global::{openGenericInterfaces[i]}), typeof(global::{openGenericClassName}));");
-                    }
                 }
             }
         }
         else
         {
-            // Closed type registration (existing logic)
+            // Closed types — emit factory form so registrations are chain-friendly (OnResolved etc.) and AOT-clean
+            var implType = $"global::{service.FullClassName}";
+            var newExpr = BuildNewExpression(service.CtorParams, implType);
+
             if (service.KeyedName != null)
             {
-                // Keyed registration
+                var keyExpr = $"\"{service.KeyedName}\"";
                 if (service.Interfaces.Count == 0)
                 {
-                    // Implementation only
-                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<{implType}>({keyExpr}, (sp, _) => {newExpr});");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
-                    // Single interface
-                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>(\"{service.KeyedName}\");");
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{service.Interfaces[0]}>({keyExpr}, (sp, _) => {newExpr});");
                 }
                 else
                 {
-                    // Multiple interfaces
-                    // TODO: this will fail for transient
-                    sb.AppendLine($"        {indent}global::Shiny.DIExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services, \"{service.KeyedName}\");");
+                    // Register impl as keyed + forwarders for each interface
+                    sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<{implType}>({keyExpr}, (sp, _) => {newExpr});");
+                    foreach (var iface in service.Interfaces)
+                        sb.AppendLine($"        {indent}services.{tryAdd}AddKeyed{lifetimeMethod}<global::{iface}>({keyExpr}, (sp, key) => sp.GetRequiredKeyedService<{implType}>(key));");
                 }
             }
             else
             {
-                // Non-keyed registration
                 if (service.Interfaces.Count == 0)
                 {
-                    // Implementation only
-                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{service.FullClassName}>();");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<{implType}>(sp => {newExpr});");
                 }
                 else if (service.Interfaces.Count == 1)
                 {
-                    // Single interface
-                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{service.Interfaces[0]}, global::{service.FullClassName}>();");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{service.Interfaces[0]}>(sp => {newExpr});");
                 }
                 else
                 {
-                    // Multiple interfaces
-                    // TODO: this will fail for transient
-                    sb.AppendLine($"        {indent}global::Shiny.DIExtensions.Add{lifetimeMethod}AsImplementedInterfaces<global::{service.FullClassName}>(services);");
+                    sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<{implType}>(sp => {newExpr});");
+                    foreach (var iface in service.Interfaces)
+                        sb.AppendLine($"        {indent}services.{tryAdd}Add{lifetimeMethod}<global::{iface}>(sp => sp.GetRequiredService<{implType}>());");
                 }
             }
         }
@@ -542,6 +589,25 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         {
             sb.AppendLine("        }");
         }
+    }
+
+    static string BuildNewExpression(List<CtorParam> ctorParams, string implTypeWithGlobal)
+    {
+        if (ctorParams.Count == 0)
+            return $"new {implTypeWithGlobal}()";
+
+        var args = new List<string>(ctorParams.Count);
+        foreach (var p in ctorParams)
+        {
+            // p.FullTypeName already includes the "global::" prefix (FullyQualifiedFormat)
+            if (p.IsServiceProvider)
+                args.Add("sp");
+            else if (p.KeyedKeyExpression != null)
+                args.Add($"sp.GetRequiredKeyedService<{p.FullTypeName}>({p.KeyedKeyExpression})");
+            else
+                args.Add($"sp.GetRequiredService<{p.FullTypeName}>()");
+        }
+        return $"new {implTypeWithGlobal}({string.Join(", ", args)})";
     }
 
     static string ConvertToOpenGenericSyntax(string fullTypeName, int genericArity)
@@ -601,6 +667,138 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         }
 
         return false;
+    }
+
+    // ==================== Bind Property Generation ====================
+
+    static bool IsBindSyntaxTarget(SyntaxNode node)
+    {
+        var typeDecl = node as TypeDeclarationSyntax;
+        if (typeDecl is not (ClassDeclarationSyntax or RecordDeclarationSyntax))
+            return false;
+
+        foreach (var member in typeDecl.Members)
+        {
+            if (member is PropertyDeclarationSyntax { AttributeLists.Count: > 0 })
+                return true;
+        }
+        return false;
+    }
+
+    static BindClassInfo? GetBindClassInfo(GeneratorSyntaxContext context)
+    {
+        var typeDecl = context.Node switch
+        {
+            ClassDeclarationSyntax c => (TypeDeclarationSyntax)c,
+            RecordDeclarationSyntax r => r,
+            _ => null
+        };
+        if (typeDecl is null)
+            return null;
+
+        var typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDecl) as INamedTypeSymbol;
+        if (typeSymbol is null)
+            return null;
+
+        var props = new List<BindPropertyInfo>();
+        foreach (var member in typeSymbol.GetMembers())
+        {
+            if (member is not IPropertySymbol prop)
+                continue;
+
+            var bindAttr = prop.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "Shiny.BindAttribute");
+            if (bindAttr is null)
+                continue;
+
+            string? storeKeyExpr = null;
+            if (bindAttr.ConstructorArguments.Length > 0 &&
+                bindAttr.ConstructorArguments[0].Value is string storeKey)
+            {
+                storeKeyExpr = storeKey;
+            }
+
+            string? keyOverride = null;
+            foreach (var named in bindAttr.NamedArguments)
+            {
+                if (named is { Key: "Key", Value.Value: string keyValue })
+                    keyOverride = keyValue;
+            }
+
+            props.Add(new BindPropertyInfo
+            {
+                Name = prop.Name,
+                FullTypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                StoreKeyExpression = storeKeyExpr,
+                KeyOverride = keyOverride
+            });
+        }
+
+        if (props.Count == 0)
+            return null;
+
+        return new BindClassInfo
+        {
+            FullClassName = typeSymbol.ToDisplayString(),
+            Namespace = typeSymbol.ContainingNamespace.ToDisplayString(),
+            ClassName = typeSymbol.Name,
+            IsRecord = typeSymbol.IsRecord,
+            Properties = props
+        };
+    }
+
+    static void ExecuteBindGeneration(ImmutableArray<BindClassInfo?> classes, SourceProductionContext context)
+    {
+        if (classes.IsDefaultOrEmpty)
+            return;
+
+        var valid = classes.Where(c => c is not null).Cast<BindClassInfo>()
+            .GroupBy(c => c.FullClassName)
+            .Select(g => g.First())
+            .ToList();
+
+        foreach (var info in valid)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("// <auto-generated />");
+            sb.AppendLine("#nullable enable");
+            sb.AppendLine();
+
+            var isGlobalNs = string.IsNullOrEmpty(info.Namespace) || info.Namespace == "<global namespace>";
+            if (!isGlobalNs)
+            {
+                sb.AppendLine($"namespace {info.Namespace};");
+                sb.AppendLine();
+            }
+
+            var kind = info.IsRecord ? "record" : "class";
+            sb.AppendLine($"partial {kind} {info.ClassName}");
+            sb.AppendLine("{");
+
+            foreach (var prop in info.Properties)
+            {
+                var storageKey = prop.KeyOverride ?? prop.Name;
+                var storeExpr = prop.StoreKeyExpression switch
+                {
+                    null => "global::Shiny.Stores.Default",
+                    "secure" => "global::Shiny.Stores.Secure",
+                    "settings" => "global::Shiny.Stores.Default",
+                    _ => $"global::Shiny.Stores.Keyed(\"{EscapeString(prop.StoreKeyExpression)}\")"
+                };
+                var typeRef = prop.FullTypeName;
+
+                sb.AppendLine($"    public partial {typeRef} {prop.Name}");
+                sb.AppendLine("    {");
+                sb.AppendLine($"        get => {storeExpr}.Get<{typeRef}>(\"{EscapeString(storageKey)}\")!;");
+                sb.AppendLine($"        set => {storeExpr}.Set(\"{EscapeString(storageKey)}\", value);");
+                sb.AppendLine("    }");
+            }
+
+            sb.AppendLine("}");
+
+            var safeFileName = info.FullClassName.Replace("<", "_").Replace(">", "_").Replace(",", "_");
+            context.AddSource($"{safeFileName}.Binds.g.cs", sb.ToString());
+        }
     }
 
     // ==================== AI Tool Generation ====================
@@ -1034,6 +1232,33 @@ class ServiceInfo
     public string? SpecificType { get; set; }
     public Location? AttributeLocation { get; set; }
     public bool HasConflictingConfiguration { get; set; }
+    public List<CtorParam> CtorParams { get; set; } = [];
+}
+
+class CtorParam
+{
+    public string FullTypeName { get; set; } = string.Empty;
+    public bool IsServiceProvider { get; set; }
+    /// <summary>Literal C# expression for the keyed service key, e.g. <c>"alpha"</c> or <c>global::MyConsts.Key</c>. Null if not a keyed param.</summary>
+    public string? KeyedKeyExpression { get; set; }
+}
+
+class BindClassInfo
+{
+    public string FullClassName { get; set; } = string.Empty;
+    public string Namespace { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public bool IsRecord { get; set; }
+    public List<BindPropertyInfo> Properties { get; set; } = [];
+}
+
+class BindPropertyInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public string FullTypeName { get; set; } = string.Empty;
+    /// <summary>Literal C# expression for the store key (DI service key). Null/empty means default store.</summary>
+    public string? StoreKeyExpression { get; set; }
+    public string? KeyOverride { get; set; }
 }
 
 class AIToolInterfaceInfo
