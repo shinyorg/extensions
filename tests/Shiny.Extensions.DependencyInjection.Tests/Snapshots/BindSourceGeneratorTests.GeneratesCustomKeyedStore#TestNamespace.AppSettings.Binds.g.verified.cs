@@ -9,6 +9,22 @@ partial class AppSettings
     public partial string Theme
     {
         get => global::Shiny.Stores.Keyed("my-store").Get<string>("Theme")!;
-        set => global::Shiny.Stores.Keyed("my-store").Set("Theme", value);
+        set
+        {
+            var __old = global::Shiny.Stores.Keyed("my-store").Get<string>("Theme")!;
+            if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(__old, value))
+                return;
+
+            global::Shiny.Stores.Keyed("my-store").Set("Theme", value);
+            this.OnThemeChanged(__old, value);
+        }
+    }
+    partial void OnThemeChanged(string oldValue, string newValue);
+
+    public static class Binds
+    {
+        public static readonly global::Shiny.BindInfo Theme = new("Theme", typeof(string), "my-store", "Theme");
+
+        public static readonly global::Shiny.BindInfo[] All = { Theme };
     }
 }

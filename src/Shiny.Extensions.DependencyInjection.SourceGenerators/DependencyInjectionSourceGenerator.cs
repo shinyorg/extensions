@@ -737,12 +737,20 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         if (props.Count == 0)
             return null;
 
+        var hasNotify = typeSymbol.GetAttributes()
+            .Any(a => a.AttributeClass?.ToDisplayString() == "Shiny.BindNotifyAttribute");
+
+        var alreadyINPC = typeSymbol.AllInterfaces
+            .Any(i => i.ToDisplayString() == "System.ComponentModel.INotifyPropertyChanged");
+
         return new BindClassInfo
         {
             FullClassName = typeSymbol.ToDisplayString(),
             Namespace = typeSymbol.ContainingNamespace.ToDisplayString(),
             ClassName = typeSymbol.Name,
             IsRecord = typeSymbol.IsRecord,
+            Notify = hasNotify,
+            AlreadyImplementsINPC = alreadyINPC,
             Properties = props
         };
     }
@@ -771,12 +779,25 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 sb.AppendLine();
             }
 
+            // Only emit the INPC base + event when [BindNotify] is set AND the class doesn't already implement it.
+            // If the user already implements INPC (e.g. via a base class or community toolkit), the partial-method
+            // hook is the integration point — they raise notifications themselves.
+            var emitNotify = info.Notify && !info.AlreadyImplementsINPC;
+
             var kind = info.IsRecord ? "record" : "class";
-            sb.AppendLine($"partial {kind} {info.ClassName}");
+            var inpcBase = emitNotify ? " : global::System.ComponentModel.INotifyPropertyChanged" : "";
+            sb.AppendLine($"partial {kind} {info.ClassName}{inpcBase}");
             sb.AppendLine("{");
 
-            foreach (var prop in info.Properties)
+            if (emitNotify)
             {
+                sb.AppendLine("    public event global::System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;");
+                sb.AppendLine();
+            }
+
+            for (var i = 0; i < info.Properties.Count; i++)
+            {
+                var prop = info.Properties[i];
                 var storageKey = prop.KeyOverride ?? prop.Name;
                 var storeExpr = prop.StoreKeyExpression switch
                 {
@@ -786,13 +807,57 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                     _ => $"global::Shiny.Stores.Keyed(\"{EscapeString(prop.StoreKeyExpression)}\")"
                 };
                 var typeRef = prop.FullTypeName;
+                var escKey = EscapeString(storageKey);
 
                 sb.AppendLine($"    public partial {typeRef} {prop.Name}");
                 sb.AppendLine("    {");
-                sb.AppendLine($"        get => {storeExpr}.Get<{typeRef}>(\"{EscapeString(storageKey)}\")!;");
-                sb.AppendLine($"        set => {storeExpr}.Set(\"{EscapeString(storageKey)}\", value);");
+                sb.AppendLine($"        get => {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
+                sb.AppendLine("        set");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            var __old = {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
+                sb.AppendLine($"            if (global::System.Collections.Generic.EqualityComparer<{typeRef}>.Default.Equals(__old, value))");
+                sb.AppendLine("                return;");
+                sb.AppendLine();
+                sb.AppendLine($"            {storeExpr}.Set(\"{escKey}\", value);");
+                sb.AppendLine($"            this.On{prop.Name}Changed(__old, value);");
+                if (emitNotify)
+                    sb.AppendLine($"            this.PropertyChanged?.Invoke(this, __BindEvents.{prop.Name});");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+                sb.AppendLine($"    partial void On{prop.Name}Changed({typeRef} oldValue, {typeRef} newValue);");
+                if (i < info.Properties.Count - 1)
+                    sb.AppendLine();
+            }
+
+            if (emitNotify)
+            {
+                sb.AppendLine();
+                sb.AppendLine("    private static class __BindEvents");
+                sb.AppendLine("    {");
+                foreach (var prop in info.Properties)
+                {
+                    sb.AppendLine($"        public static readonly global::System.ComponentModel.PropertyChangedEventArgs {prop.Name} = new(\"{prop.Name}\");");
+                }
                 sb.AppendLine("    }");
             }
+
+            // Class-level Binds metadata — one BindInfo per bound property plus an All array for enumeration
+            sb.AppendLine();
+            sb.AppendLine("    public static class Binds");
+            sb.AppendLine("    {");
+            foreach (var prop in info.Properties)
+            {
+                var storageKey = prop.KeyOverride ?? prop.Name;
+                var storeKeyLiteral = prop.StoreKeyExpression is null
+                    ? "null"
+                    : $"\"{EscapeString(prop.StoreKeyExpression)}\"";
+                sb.AppendLine($"        public static readonly global::Shiny.BindInfo {prop.Name} = new(\"{prop.Name}\", typeof({prop.FullTypeName}), {storeKeyLiteral}, \"{EscapeString(storageKey)}\");");
+            }
+            sb.AppendLine();
+            sb.Append("        public static readonly global::Shiny.BindInfo[] All = { ");
+            sb.Append(string.Join(", ", info.Properties.Select(p => p.Name)));
+            sb.AppendLine(" };");
+            sb.AppendLine("    }");
 
             sb.AppendLine("}");
 
@@ -1249,6 +1314,10 @@ class BindClassInfo
     public string Namespace { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
     public bool IsRecord { get; set; }
+    /// <summary>True when the class is marked with <c>[BindNotify]</c> and we should generate INPC.</summary>
+    public bool Notify { get; set; }
+    /// <summary>True when the class already implements <c>INotifyPropertyChanged</c> (directly or via a base type).</summary>
+    public bool AlreadyImplementsINPC { get; set; }
     public List<BindPropertyInfo> Properties { get; set; } = [];
 }
 

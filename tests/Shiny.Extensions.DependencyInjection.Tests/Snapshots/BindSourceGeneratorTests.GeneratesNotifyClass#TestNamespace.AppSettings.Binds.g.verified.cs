@@ -4,8 +4,10 @@
 
 namespace TestNamespace;
 
-partial class AppSettings
+partial class AppSettings : global::System.ComponentModel.INotifyPropertyChanged
 {
+    public event global::System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
     public partial string Theme
     {
         get => global::Shiny.Stores.Default.Get<string>("Theme")!;
@@ -17,6 +19,7 @@ partial class AppSettings
 
             global::Shiny.Stores.Default.Set("Theme", value);
             this.OnThemeChanged(__old, value);
+            this.PropertyChanged?.Invoke(this, __BindEvents.Theme);
         }
     }
     partial void OnThemeChanged(string oldValue, string newValue);
@@ -32,9 +35,16 @@ partial class AppSettings
 
             global::Shiny.Stores.Secure.Set("Token", value);
             this.OnTokenChanged(__old, value);
+            this.PropertyChanged?.Invoke(this, __BindEvents.Token);
         }
     }
     partial void OnTokenChanged(string oldValue, string newValue);
+
+    private static class __BindEvents
+    {
+        public static readonly global::System.ComponentModel.PropertyChangedEventArgs Theme = new("Theme");
+        public static readonly global::System.ComponentModel.PropertyChangedEventArgs Token = new("Token");
+    }
 
     public static class Binds
     {

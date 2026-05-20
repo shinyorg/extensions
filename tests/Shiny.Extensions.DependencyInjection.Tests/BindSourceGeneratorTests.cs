@@ -102,4 +102,50 @@ public class BindSourceGeneratorTests
             """;
         return TestHelper.VerifyDI(source);
     }
+
+
+    [Fact]
+    public Task GeneratesNotifyClass()
+    {
+        var source = """
+            using Shiny;
+
+            namespace TestNamespace
+            {
+                [BindNotify]
+                public partial class AppSettings
+                {
+                    [Bind]
+                    public partial string Theme { get; set; }
+
+                    [Bind("secure")]
+                    public partial string Token { get; set; }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
+
+
+    [Fact]
+    public Task SkipsNotifyWhenClassAlreadyImplementsINPC()
+    {
+        var source = """
+            using Shiny;
+            using System.ComponentModel;
+
+            namespace TestNamespace
+            {
+                [BindNotify]
+                public partial class AppSettings : INotifyPropertyChanged
+                {
+                    public event PropertyChangedEventHandler? PropertyChanged;
+
+                    [Bind]
+                    public partial string Theme { get; set; }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
 }

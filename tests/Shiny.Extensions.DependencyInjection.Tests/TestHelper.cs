@@ -134,6 +134,18 @@ public static class TestHelper
             // ComponentModel assembly not available
         }
 
+        // Add System.ObjectModel (for INotifyPropertyChanged) — needed so the bind generator
+        // can resolve the interface symbol when a class declares `: INotifyPropertyChanged`
+        try
+        {
+            var objectModelAssembly = typeof(System.ComponentModel.INotifyPropertyChanged).Assembly;
+            references.Add(MetadataReference.CreateFromFile(objectModelAssembly.Location));
+        }
+        catch
+        {
+            // ObjectModel assembly not available
+        }
+
         return references;
     }
 

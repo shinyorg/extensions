@@ -9,6 +9,22 @@ partial class AppSettings
     public partial int Counter
     {
         get => global::Shiny.Stores.Default.Get<int>("custom-key")!;
-        set => global::Shiny.Stores.Default.Set("custom-key", value);
+        set
+        {
+            var __old = global::Shiny.Stores.Default.Get<int>("custom-key")!;
+            if (global::System.Collections.Generic.EqualityComparer<int>.Default.Equals(__old, value))
+                return;
+
+            global::Shiny.Stores.Default.Set("custom-key", value);
+            this.OnCounterChanged(__old, value);
+        }
+    }
+    partial void OnCounterChanged(int oldValue, int newValue);
+
+    public static class Binds
+    {
+        public static readonly global::Shiny.BindInfo Counter = new("Counter", typeof(int), null, "custom-key");
+
+        public static readonly global::Shiny.BindInfo[] All = { Counter };
     }
 }

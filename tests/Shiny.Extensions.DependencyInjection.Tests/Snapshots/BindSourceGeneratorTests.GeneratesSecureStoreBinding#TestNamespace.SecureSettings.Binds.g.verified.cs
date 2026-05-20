@@ -9,6 +9,22 @@ partial class SecureSettings
     public partial string Token
     {
         get => global::Shiny.Stores.Secure.Get<string>("Token")!;
-        set => global::Shiny.Stores.Secure.Set("Token", value);
+        set
+        {
+            var __old = global::Shiny.Stores.Secure.Get<string>("Token")!;
+            if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(__old, value))
+                return;
+
+            global::Shiny.Stores.Secure.Set("Token", value);
+            this.OnTokenChanged(__old, value);
+        }
+    }
+    partial void OnTokenChanged(string oldValue, string newValue);
+
+    public static class Binds
+    {
+        public static readonly global::Shiny.BindInfo Token = new("Token", typeof(string), "secure", "Token");
+
+        public static readonly global::Shiny.BindInfo[] All = { Token };
     }
 }
