@@ -47,16 +47,23 @@ Stores are registered as **keyed** singletons in DI using `StoreKeys` constants:
 ## Setup
 
 ```csharp
-// Mobile/Desktop - registers platform-native stores + a hosted initializer for the static Shiny.Stores accessor
-services.AddShinyStores();
+// Register services
+services.AddShinyStores();              // Mobile/Desktop - platform-native stores
+services.AddShinyWebAssemblyStores();   // Blazor WebAssembly - localStorage
 
-// Blazor WebAssembly
-services.AddShinyWebAssemblyStores();
+// After building the service provider, wire up the static Shiny.Stores accessor
+var host = builder.Build();
+host.Services.UseShinyStores();
 ```
+
+`AddShinyStores()` no longer registers a hosted initializer. You **must** call
+`serviceProvider.UseShinyStores()` (or `Shiny.Stores.Initialize(serviceProvider)`)
+once after the service provider is built — otherwise the static accessor throws
+`InvalidOperationException` on first use.
 
 ## Static `Shiny.Stores` Accessor
 
-The simplest way to read/write — backed by a hosted initializer that populates the static after the service provider is built.
+The simplest way to read/write — populated by `UseShinyStores()` after the service provider is built.
 
 ```csharp
 Shiny.Stores.Default.Set("theme", "dark");
@@ -68,7 +75,8 @@ Shiny.Stores.Secure.Set("token", "abc123");
 Shiny.Stores.Keyed("my-store").Set("k", "v");
 ```
 
-For host-less scenarios (unit tests, console apps without `IHost`), call `Shiny.Stores.Initialize(serviceProvider)` after `BuildServiceProvider()`.
+For unit tests / host-less scenarios, call `serviceProvider.UseShinyStores()`
+(or `Shiny.Stores.Initialize(serviceProvider)`) directly after `BuildServiceProvider()`.
 
 ## DI-Style Access
 
@@ -128,4 +136,4 @@ store.IncrementValue(key);              // Thread-safe integer increment
 
 1. **Use `[Bind]` for settings classes** — eliminates boilerplate, no INPC needed, AOT-clean
 2. **Target the secure store** — always use `[Bind("secure")]` for sensitive values
-3. **Don't initialize manually in production** — `AddShinyStores()` registers a hosted initializer; only call `Shiny.Stores.Initialize(...)` in tests
+3. **Always call `UseShinyStores()` after build** — `AddShinyStores()` no longer registers a hosted initializer. After `host.Build()` / `builder.Build()` / `services.BuildServiceProvider()`, call `serviceProvider.UseShinyStores()` (or `Shiny.Stores.Initialize(serviceProvider)`) once, otherwise the static `Shiny.Stores` accessor throws on first use

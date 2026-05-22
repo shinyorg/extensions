@@ -102,9 +102,12 @@ namespace Sample
 ### Setup
 
 1. Install the NuGet package `Shiny.Extensions.Stores`
-2. Register at startup:
+2. Register at startup and initialize the static accessor after build:
    ```csharp
    builder.Services.AddShinyStores();
+
+   var host = builder.Build();
+   host.Services.UseShinyStores();   // wires up the static Shiny.Stores accessor
    ```
 3. Define your settings as a `partial` class with `[Bind]` partial properties:
    ```csharp

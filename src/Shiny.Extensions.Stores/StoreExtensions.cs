@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Shiny.Extensions.Stores;
 using Shiny.Extensions.Stores.Infrastructure;
 
@@ -76,9 +75,10 @@ public static class StoreExtensions
 
 
     /// <summary>
-    /// Registers Shiny store services: <see cref="ISerializer"/>, platform-native keyed
-    /// <see cref="IKeyValueStore"/> for <see cref="StoreKeys.Default"/> and <see cref="StoreKeys.Secure"/>,
-    /// and a hosted initializer that populates the <see cref="Stores"/> static accessor at app start.
+    /// Registers Shiny store services: <see cref="ISerializer"/> and platform-native keyed
+    /// <see cref="IKeyValueStore"/> for <see cref="StoreKeys.Default"/> and <see cref="StoreKeys.Secure"/>.
+    /// After building the service provider, call <see cref="UseShinyStores(IServiceProvider)"/>
+    /// (or a host-specific overload) to wire up the <see cref="Stores"/> static accessor.
     /// </summary>
     public static IServiceCollection AddShinyStores(this IServiceCollection services)
     {
@@ -94,10 +94,18 @@ public static class StoreExtensions
         services.TryAddKeyedSingleton<IKeyValueStore, MemoryKeyValueStore>(StoreKeys.Default);
         services.TryAddKeyedSingleton<IKeyValueStore, MemoryKeyValueStore>(StoreKeys.Secure);
 #endif
-
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, StoresInitializer>());
         return services;
     }
 
 
+    /// <summary>
+    /// Initializes the <see cref="Stores"/> static accessor with the given service provider.
+    /// Call this once after the service provider is built (e.g. after <c>host.Build()</c>,
+    /// <c>builder.Build()</c>, or <c>services.BuildServiceProvider()</c>).
+    /// </summary>
+    public static IServiceProvider UseShinyStores(this IServiceProvider services)
+    {
+        Stores.Initialize(services);
+        return services;
+    }
 }
