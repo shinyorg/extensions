@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Sample.Maui.AppSupportPage"
+             Title="IAppSupport Sample">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+
+            <Label Text="Device Info" FontSize="20" FontAttributes="Bold" />
+            <VerticalStackLayout Spacing="4">
+                <Label x:Name="AppVersionLabel" />
+                <Label x:Name="DeviceManufacturerLabel" />
+                <Label x:Name="DeviceModelLabel" />
+                <Label x:Name="PlatformVersionLabel" />
+            </VerticalStackLayout>
+
+            <BoxView HeightRequest="1" Color="LightGray" />
+
+            <Label Text="Live System Changes" FontSize="20" FontAttributes="Bold" />
+            <Label Text="Rotate the device, change the system language, or change the system time zone in Settings — these labels update without a restart." FontSize="12" TextColor="Gray" />
+            <VerticalStackLayout Spacing="4">
+                <Label x:Name="OrientationLabel" />
+                <Label x:Name="CultureLabel" />
+                <Label x:Name="TimeZoneLabel" />
+            </VerticalStackLayout>
+
+            <BoxView HeightRequest="1" Color="LightGray" />
+
+            <Label Text="Orientation Lock" FontSize="20" FontAttributes="Bold" />
+            <Label Text="iOS 15 and macCatalyst will report failure — there's no supported public API there." FontSize="12" TextColor="Gray" />
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Lock Portrait" Clicked="OnLockPortrait" />
+                <Button Text="Lock Landscape" Clicked="OnLockLandscape" />
+                <Button Text="Reset" Clicked="OnResetOrientation" />
+            </HorizontalStackLayout>
+            <Label x:Name="OrientationResultLabel" FontSize="12" TextColor="Gray" />
+
+            <BoxView HeightRequest="1" Color="LightGray" />
+
+            <Label Text="Launchers" FontSize="20" FontAttributes="Bold" />
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Open Browser" Clicked="OnOpenBrowser" />
+                <Button Text="Open Map" Clicked="OnOpenMap" />
+            </HorizontalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,78 @@
+using System.Globalization;
+using System.Text.Json;
+using Microsoft.Maui.ApplicationModel;
+
+namespace Shiny.Impl;
+
+public sealed partial class AppStore
+{
+    async Task<AppStoreResult?> LookupCurrent(CancellationToken cancellationToken)
+    {
+        // AppInfo.PackageName returns CFBundleIdentifier on Apple platforms.
+        var bundleId = this.options.AppleBundleId ?? AppInfo.Current.PackageName;
+        if (string.IsNullOrWhiteSpace(bundleId))
+            return null;
+
+        var url = $"https://itunes.apple.com/lookup?bundleId={Uri.EscapeDataString(bundleId)}&country={Uri.EscapeDataString(this.options.CountryCode)}";
+        using var response = await this.http.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        if (!doc.RootElement.TryGetProperty("results", out var results) || results.GetArrayLength() == 0)
+            return null;
+
+        var entry = results[0];
+        if (!TryGetVersion(entry, "version", out var storeVersion))
+            return null;
+
+        // Cache the discovered trackId so OpenStore/OpenReviewPage work without the caller wiring AppleAppId.
+        if (entry.TryGetProperty("trackId", out var trackId) && trackId.ValueKind == JsonValueKind.Number)
+            this.options.AppleAppId ??= trackId.GetInt64().ToString(CultureInfo.InvariantCulture);
+
+        // AppInfo.Version is the running app's CFBundleShortVersionString — what users see in the store.
+        var current = AppInfo.Current.Version;
+        return new AppStoreResult(
+            storeVersion,
+            current,
+            storeVersion > current,
+            entry.TryGetProperty("trackViewUrl", out var trackUrl) ? trackUrl.GetString() ?? string.Empty : string.Empty,
+            entry.TryGetProperty("releaseNotes", out var notes) ? notes.GetString() : null,
+            entry.TryGetProperty("currentVersionReleaseDate", out var date) && date.TryGetDateTimeOffset(out var dto) ? dto : null,
+            entry.TryGetProperty("averageUserRating", out var rating) && rating.ValueKind == JsonValueKind.Number ? rating.GetDouble() : null,
+            entry.TryGetProperty("userRatingCount", out var count) && count.ValueKind == JsonValueKind.Number ? count.GetInt64() : null,
+            entry.TryGetProperty("minimumOsVersion", out var minOs) ? minOs.GetString() : null
+        );
+    }
+
+    Task<bool> OpenStoreCore()
+    {
+        // Need an actual App ID for the deep link — callers should configure it or call GetCurrent first.
+        var appId = this.options.AppleAppId;
+        if (string.IsNullOrWhiteSpace(appId))
+            return Task.FromResult(false);
+
+        return Launcher.Default.TryOpenAsync(new Uri($"itms-apps://itunes.apple.com/app/id{appId}"));
+    }
+
+    Task<bool> OpenReviewPageCore()
+    {
+        var appId = this.options.AppleAppId;
+        if (string.IsNullOrWhiteSpace(appId))
+            return Task.FromResult(false);
+
+        return Launcher.Default.TryOpenAsync(new Uri($"itms-apps://itunes.apple.com/app/id{appId}?action=write-review"));
+    }
+
+    static bool TryGetVersion(JsonElement element, string propertyName, out Version version)
+    {
+        version = new Version(0, 0);
+        if (!element.TryGetProperty(propertyName, out var prop))
+            return false;
+
+        var str = prop.GetString();
+        return !string.IsNullOrWhiteSpace(str) && Version.TryParse(str, out version!);
+    }
+}

@@ -182,6 +182,9 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 * Module-based MAUI app configuration with `IMauiModule`
 * Static `Host.Services` for accessing the service provider anywhere
 * Platform lifecycle hooks via `ILifecycleExecutor` (foreground/background events, activity results, etc.)
+* `IAppSupport` — device info, browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/Windows, polling fallback elsewhere)
+* `IAppStore` — cross-platform store version lookups + deep links for Apple App Store (iTunes Search API), Google Play (HTML scrape), and Microsoft Store (DisplayCatalog API)
+* Opt-in registration: each capability is its own extension method so apps only pay for what they use
 
 ### Setup
 1. Install the NuGet package `Shiny.Extensions.MauiHosting`
@@ -209,11 +212,56 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
    var builder = MauiApp.CreateBuilder();
    builder
        .UseMauiApp<App>()
-       .AddInfrastructureModules(new MyMauiModule());
+       .AddInfrastructureModules(new MyMauiModule())   // your IMauiModule list
+       .AddPlatformLifecycle()                         // lifecycle hooks
+       .AddAppSupport()                                // IAppSupport
+       .AddAppStore(opts =>                            // optional: IAppStore + config
+       {
+           opts.AppleAppId = "1234567890";
+           opts.WindowsProductId = "9NBLGGH4NNS1";
+       });
 
    return builder.Build();
    ```
 4. Access services anywhere via `Host.Services`
+
+#### IAppSupport
+```csharp
+public class MyVm(IAppSupport app)
+{
+    void Hook()
+    {
+        // Snapshot
+        var version = app.AppVersion;
+        var orientation = app.CurrentOrientation;
+        var culture = app.CurrentCulture;
+
+        // Live updates
+        app.OrientationChanged += (s, e) => { /* new DisplayOrientation */ };
+        app.CultureChanged += (s, e) => { /* new CultureInfo */ };
+        app.TimeZoneChanged += (s, e) => { /* new TimeZoneInfo */ };
+
+        // Programmatic orientation lock
+        _ = app.SetOrientation(DisplayOrientation.Landscape);
+        _ = app.ResetOrientation();
+    }
+}
+```
+
+#### IAppStore
+```csharp
+public class UpdateChecker(IAppStore store)
+{
+    public async Task Check()
+    {
+        var result = await store.GetCurrent();
+        if (result?.NeedsUpdate == true)
+            await store.OpenStore();
+    }
+
+    public Task Review() => store.OpenReviewPage();
+}
+```
 
 
 ## Additional Libraries Used

@@ -16,6 +16,7 @@
     </Folder>
     <Folder Name="/tests/">
         <Project Path="samples/Sample.CopilotConsole/Sample.CopilotConsole.csproj" />
+        <Project Path="samples/Sample.Maui/Sample.Maui.csproj" />
         <Project Path="samples/Sample.Web/Sample.Web.csproj" />
         <Project Path="samples/Reflector/Samples.Reflector.csproj" />
         <Project Path="Sample\Sample.csproj" />
