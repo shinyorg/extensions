@@ -782,11 +782,65 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         if (props.Count == 0)
             return null;
 
-        var hasNotify = typeSymbol.GetAttributes()
-            .Any(a => a.AttributeClass?.ToDisplayString() == "Shiny.BindNotifyAttribute");
+        var notifyAttr = typeSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "Shiny.BindNotifyAttribute");
+        var hasNotify = notifyAttr is not null;
 
         var alreadyINPC = typeSymbol.AllInterfaces
             .Any(i => i.ToDisplayString() == "System.ComponentModel.INotifyPropertyChanged");
+
+        // Decide how to raise notifications when [BindNotify] is set.
+        //   own         — class doesn't implement INPC, generator emits the event + raise.
+        //   self-event  — class declares its own PropertyChanged event (any partial part); raise directly.
+        //   args        — INPC inherited from a base that exposes OnPropertyChanged(PropertyChangedEventArgs).
+        //   string      — INPC inherited from a base that exposes only OnPropertyChanged(string?).
+        //   null + DI003 — INPC inherited but no accessible OnPropertyChanged found.
+        string? notifyStrategy = null;
+        var notifyMissingRaise = false;
+        if (hasNotify)
+        {
+            if (!alreadyINPC)
+            {
+                notifyStrategy = "own";
+            }
+            else if (typeSymbol.GetMembers("PropertyChanged").OfType<IEventSymbol>().Any())
+            {
+                notifyStrategy = "self-event";
+            }
+            else
+            {
+                var t = typeSymbol.BaseType;
+                while (t is not null)
+                {
+                    foreach (var m in t.GetMembers("OnPropertyChanged").OfType<IMethodSymbol>())
+                    {
+                        if (m.IsStatic || m.Parameters.Length != 1)
+                            continue;
+                        if (m.DeclaredAccessibility is not (Accessibility.Public
+                            or Accessibility.Protected
+                            or Accessibility.ProtectedOrInternal
+                            or Accessibility.Internal))
+                            continue;
+
+                        var paramType = m.Parameters[0].Type;
+                        if (paramType.ToDisplayString() == "System.ComponentModel.PropertyChangedEventArgs")
+                        {
+                            notifyStrategy = "args";
+                            break; // args is preferred over string — stop scanning this type
+                        }
+                        if (paramType.SpecialType == SpecialType.System_String && notifyStrategy is null)
+                            notifyStrategy = "string";
+                    }
+                    if (notifyStrategy == "args")
+                        break;
+                    t = t.BaseType;
+                }
+
+                notifyMissingRaise = notifyStrategy is null;
+            }
+        }
+
+        var notifyAttrLocation = notifyAttr?.ApplicationSyntaxReference?.GetSyntax().GetLocation();
 
         return new BindClassInfo
         {
@@ -796,6 +850,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             IsRecord = typeSymbol.IsRecord,
             Notify = hasNotify,
             AlreadyImplementsINPC = alreadyINPC,
+            NotifyStrategy = notifyStrategy,
+            NotifyMissingRaise = notifyMissingRaise,
+            NotifyAttributeLocation = notifyAttrLocation,
             Properties = props
         };
     }
@@ -818,6 +875,14 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        var di003 = new DiagnosticDescriptor(
+            "DI003",
+            "[BindNotify] cannot raise notifications",
+            "[BindNotify] is set but the class inherits INotifyPropertyChanged from a base that exposes no accessible OnPropertyChanged method — generated setters will not raise PropertyChanged. Implement an OnPropertyChanged(string) or OnPropertyChanged(PropertyChangedEventArgs) method (e.g. via CommunityToolkit.Mvvm.ObservableObject), declare the event on this class directly, or remove [BindNotify].",
+            "Usage",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
         foreach (var info in valid)
         {
             foreach (var p in info.Properties)
@@ -825,6 +890,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 if (p.DefaultTypeError is not null)
                     context.ReportDiagnostic(Diagnostic.Create(di002, p.AttributeLocation, p.DefaultTypeError));
             }
+
+            if (info.NotifyMissingRaise)
+                context.ReportDiagnostic(Diagnostic.Create(di003, info.NotifyAttributeLocation));
         }
 
         // Drop properties with invalid defaults from generation so the file still compiles around the error.
@@ -847,17 +915,22 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 sb.AppendLine();
             }
 
-            // Only emit the INPC base + event when [BindNotify] is set AND the class doesn't already implement it.
-            // If the user already implements INPC (e.g. via a base class or community toolkit), the partial-method
-            // hook is the integration point — they raise notifications themselves.
-            var emitNotify = info.Notify && !info.AlreadyImplementsINPC;
+            // notifyStrategy decides how — and whether — generated setters raise notifications.
+            //   own         → emit INPC base + PropertyChanged event + raise via the event.
+            //   self-event  → class already declares the event; raise via this.PropertyChanged?.Invoke.
+            //   args        → base exposes OnPropertyChanged(PropertyChangedEventArgs); call it with cached args.
+            //   string      → base exposes only OnPropertyChanged(string?); call it with nameof().
+            //   null        → no raise (either [BindNotify] absent or DI003 surfaced).
+            var strategy = info.NotifyStrategy;
+            var emitOwnINPC = strategy == "own";
+            var emitBindEvents = strategy is "own" or "self-event" or "args";
 
             var kind = info.IsRecord ? "record" : "class";
-            var inpcBase = emitNotify ? " : global::System.ComponentModel.INotifyPropertyChanged" : "";
+            var inpcBase = emitOwnINPC ? " : global::System.ComponentModel.INotifyPropertyChanged" : "";
             sb.AppendLine($"partial {kind} {info.ClassName}{inpcBase}");
             sb.AppendLine("{");
 
-            if (emitNotify)
+            if (emitOwnINPC)
             {
                 sb.AppendLine("    public event global::System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;");
                 sb.AppendLine();
@@ -896,8 +969,19 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                     sb.AppendLine();
                     sb.AppendLine($"            {storeExpr}.Set(\"{escKey}\", value);");
                     sb.AppendLine($"            this.On{prop.Name}Changed(__old, value);");
-                    if (emitNotify)
-                        sb.AppendLine($"            this.PropertyChanged?.Invoke(this, __BindEvents.{prop.Name});");
+                    switch (strategy)
+                    {
+                        case "own":
+                        case "self-event":
+                            sb.AppendLine($"            this.PropertyChanged?.Invoke(this, __BindEvents.{prop.Name});");
+                            break;
+                        case "args":
+                            sb.AppendLine($"            this.OnPropertyChanged(__BindEvents.{prop.Name});");
+                            break;
+                        case "string":
+                            sb.AppendLine($"            this.OnPropertyChanged(nameof({prop.Name}));");
+                            break;
+                    }
                     sb.AppendLine("        }");
                 }
                 sb.AppendLine("    }");
@@ -907,7 +991,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                     sb.AppendLine();
             }
 
-            if (emitNotify)
+            if (emitBindEvents)
             {
                 sb.AppendLine();
                 sb.AppendLine("    private static class __BindEvents");
@@ -1454,6 +1538,12 @@ class BindClassInfo
     public bool Notify { get; set; }
     /// <summary>True when the class already implements <c>INotifyPropertyChanged</c> (directly or via a base type).</summary>
     public bool AlreadyImplementsINPC { get; set; }
+    /// <summary>How generated setters should raise notifications: <c>own</c>, <c>self-event</c>, <c>args</c>, <c>string</c>, or null when no raise will be emitted.</summary>
+    public string? NotifyStrategy { get; set; }
+    /// <summary>True when <c>[BindNotify]</c> is set on an INPC-inheriting class but no accessible <c>OnPropertyChanged</c> overload could be found — surfaces as diagnostic DI003.</summary>
+    public bool NotifyMissingRaise { get; set; }
+    /// <summary>Location of the <c>[BindNotify]</c> attribute for diagnostic reporting.</summary>
+    public Location? NotifyAttributeLocation { get; set; }
     public List<BindPropertyInfo> Properties { get; set; } = [];
 }
 

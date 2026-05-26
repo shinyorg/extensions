@@ -1,0 +1,24 @@
+﻿{
+  Diagnostics: [
+    {
+      Location: /*
+
+    [BindNotify]
+     ^^^^^^^^^^
+    public partial class AppSettings : OpaqueINPC
+*/
+ : (12,5)-(12,15),
+      Message: [BindNotify] is set but the class inherits INotifyPropertyChanged from a base that exposes no accessible OnPropertyChanged method — generated setters will not raise PropertyChanged. Implement an OnPropertyChanged(string) or OnPropertyChanged(PropertyChangedEventArgs) method (e.g. via CommunityToolkit.Mvvm.ObservableObject), declare the event on this class directly, or remove [BindNotify].,
+      Severity: Warning,
+      WarningLevel: 1,
+      Descriptor: {
+        Id: DI003,
+        Title: [BindNotify] cannot raise notifications,
+        MessageFormat: [BindNotify] is set but the class inherits INotifyPropertyChanged from a base that exposes no accessible OnPropertyChanged method — generated setters will not raise PropertyChanged. Implement an OnPropertyChanged(string) or OnPropertyChanged(PropertyChangedEventArgs) method (e.g. via CommunityToolkit.Mvvm.ObservableObject), declare the event on this class directly, or remove [BindNotify].,
+        Category: Usage,
+        DefaultSeverity: Warning,
+        IsEnabledByDefault: true
+      }
+    }
+  ]
+}

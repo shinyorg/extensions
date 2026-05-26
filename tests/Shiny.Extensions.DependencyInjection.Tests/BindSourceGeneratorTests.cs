@@ -304,8 +304,10 @@ public class BindSourceGeneratorTests
 
 
     [Fact]
-    public Task SkipsNotifyWhenClassAlreadyImplementsINPC()
+    public Task RaisesViaSelfEventWhenClassDeclaresINPC()
     {
+        // Class declares its own PropertyChanged event inline — the generator must NOT redeclare INPC
+        // or the event, but should still raise notifications by invoking the user-declared event directly.
         var source = """
             using Shiny;
             using System.ComponentModel;
@@ -317,6 +319,98 @@ public class BindSourceGeneratorTests
                 {
                     public event PropertyChangedEventHandler? PropertyChanged;
 
+                    [Bind]
+                    public partial string Theme { get; set; }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
+
+
+    [Fact]
+    public Task RaisesViaOnPropertyChangedArgsBase()
+    {
+        // Simulates CommunityToolkit.Mvvm.ObservableObject — INPC inherited from a base that exposes
+        // OnPropertyChanged(PropertyChangedEventArgs). The generator should call it with cached args.
+        var source = """
+            using Shiny;
+            using System.ComponentModel;
+
+            namespace TestNamespace
+            {
+                public abstract class ObservableBase : INotifyPropertyChanged
+                {
+                    public event PropertyChangedEventHandler? PropertyChanged;
+                    protected virtual void OnPropertyChanged(PropertyChangedEventArgs e) =>
+                        PropertyChanged?.Invoke(this, e);
+                    protected void OnPropertyChanged(string? propertyName) =>
+                        OnPropertyChanged(new PropertyChangedEventArgs(propertyName));
+                }
+
+                [BindNotify]
+                public partial class AppSettings : ObservableBase
+                {
+                    [Bind]
+                    public partial string Theme { get; set; }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
+
+
+    [Fact]
+    public Task RaisesViaOnPropertyChangedStringBase()
+    {
+        // Base exposes only OnPropertyChanged(string?) — the generator falls back to the string overload
+        // with nameof(). No __BindEvents class is emitted since cached args aren't used.
+        var source = """
+            using Shiny;
+            using System.ComponentModel;
+
+            namespace TestNamespace
+            {
+                public abstract class StringNotifyBase : INotifyPropertyChanged
+                {
+                    public event PropertyChangedEventHandler? PropertyChanged;
+                    protected void OnPropertyChanged(string? propertyName) =>
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                }
+
+                [BindNotify]
+                public partial class AppSettings : StringNotifyBase
+                {
+                    [Bind]
+                    public partial string Theme { get; set; }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
+
+
+    [Fact]
+    public Task ReportsDiagnosticWhenNotifyHasNoRaiseMechanism()
+    {
+        // INPC inherited from a base that exposes no accessible OnPropertyChanged. The generator can't
+        // figure out how to raise notifications and emits DI003.
+        var source = """
+            using Shiny;
+            using System.ComponentModel;
+
+            namespace TestNamespace
+            {
+                public abstract class OpaqueINPC : INotifyPropertyChanged
+                {
+                    public event PropertyChangedEventHandler? PropertyChanged;
+                    private void OnPropertyChanged(string? n) =>
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+                }
+
+                [BindNotify]
+                public partial class AppSettings : OpaqueINPC
+                {
                     [Bind]
                     public partial string Theme { get; set; }
                 }
