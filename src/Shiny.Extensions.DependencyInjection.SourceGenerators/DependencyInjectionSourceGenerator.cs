@@ -719,18 +719,63 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             }
 
             string? keyOverride = null;
+            TypedConstant? defaultConstant = null;
+            bool hasDefaultArg = false;
             foreach (var named in bindAttr.NamedArguments)
             {
                 if (named is { Key: "Key", Value.Value: string keyValue })
                     keyOverride = keyValue;
+                else if (named.Key == "Default")
+                {
+                    hasDefaultArg = true;
+                    defaultConstant = named.Value;
+                }
             }
+
+            string? defaultLiteral = null;
+            string? defaultTypeError = null;
+            Location? bindAttrLocation = null;
+            if (hasDefaultArg)
+            {
+                bindAttrLocation = bindAttr.ApplicationSyntaxReference?.GetSyntax().GetLocation();
+                var tc = defaultConstant!.Value;
+                if (!tc.IsNull)
+                {
+                    if (tc.Type is null ||
+                        !context.SemanticModel.Compilation.ClassifyConversion(tc.Type, prop.Type).IsImplicit)
+                    {
+                        var srcTypeName = tc.Type?.ToDisplayString() ?? "<null>";
+                        var dstTypeName = prop.Type.ToDisplayString();
+                        defaultTypeError = $"Default value of type '{srcTypeName}' is not implicitly convertible to property type '{dstTypeName}'.";
+                    }
+                    else
+                    {
+                        defaultLiteral = BuildDefaultLiteral(tc, prop.Type);
+                    }
+                }
+            }
+
+            var propAccess = AccessibilityToKeyword(prop.DeclaredAccessibility);
+            string? getterAccess = null;
+            string? setterAccess = null;
+            if (prop.GetMethod is { } getter && getter.DeclaredAccessibility != prop.DeclaredAccessibility)
+                getterAccess = AccessibilityToKeyword(getter.DeclaredAccessibility);
+            if (prop.SetMethod is { } setter && setter.DeclaredAccessibility != prop.DeclaredAccessibility)
+                setterAccess = AccessibilityToKeyword(setter.DeclaredAccessibility);
 
             props.Add(new BindPropertyInfo
             {
                 Name = prop.Name,
                 FullTypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 StoreKeyExpression = storeKeyExpr,
-                KeyOverride = keyOverride
+                KeyOverride = keyOverride,
+                PropertyAccessibility = propAccess,
+                GetterAccessibility = getterAccess,
+                SetterAccessibility = setterAccess,
+                HasSetter = prop.SetMethod is not null,
+                DefaultLiteral = defaultLiteral,
+                DefaultTypeError = defaultTypeError,
+                AttributeLocation = bindAttrLocation
             });
         }
 
@@ -764,6 +809,29 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             .GroupBy(c => c.FullClassName)
             .Select(g => g.First())
             .ToList();
+
+        var di002 = new DiagnosticDescriptor(
+            "DI002",
+            "Invalid [Bind] default value",
+            "{0}",
+            "Usage",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        foreach (var info in valid)
+        {
+            foreach (var p in info.Properties)
+            {
+                if (p.DefaultTypeError is not null)
+                    context.ReportDiagnostic(Diagnostic.Create(di002, p.AttributeLocation, p.DefaultTypeError));
+            }
+        }
+
+        // Drop properties with invalid defaults from generation so the file still compiles around the error.
+        foreach (var info in valid)
+            info.Properties = info.Properties.Where(p => p.DefaultTypeError is null).ToList();
+
+        valid = valid.Where(i => i.Properties.Count > 0).ToList();
 
         foreach (var info in valid)
         {
@@ -809,22 +877,32 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 var typeRef = prop.FullTypeName;
                 var escKey = EscapeString(storageKey);
 
-                sb.AppendLine($"    public partial {typeRef} {prop.Name}");
+                var getterMod = prop.GetterAccessibility is null ? "" : prop.GetterAccessibility + " ";
+                var setterMod = prop.SetterAccessibility is null ? "" : prop.SetterAccessibility + " ";
+
+                sb.AppendLine($"    {prop.PropertyAccessibility} partial {typeRef} {prop.Name}");
                 sb.AppendLine("    {");
-                sb.AppendLine($"        get => {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
-                sb.AppendLine("        set");
-                sb.AppendLine("        {");
-                sb.AppendLine($"            var __old = {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
-                sb.AppendLine($"            if (global::System.Collections.Generic.EqualityComparer<{typeRef}>.Default.Equals(__old, value))");
-                sb.AppendLine("                return;");
-                sb.AppendLine();
-                sb.AppendLine($"            {storeExpr}.Set(\"{escKey}\", value);");
-                sb.AppendLine($"            this.On{prop.Name}Changed(__old, value);");
-                if (emitNotify)
-                    sb.AppendLine($"            this.PropertyChanged?.Invoke(this, __BindEvents.{prop.Name});");
-                sb.AppendLine("        }");
+                if (prop.DefaultLiteral is not null)
+                    sb.AppendLine($"        {getterMod}get => global::Shiny.StoreExtensions.Get<{typeRef}>({storeExpr}, \"{escKey}\", {prop.DefaultLiteral});");
+                else
+                    sb.AppendLine($"        {getterMod}get => {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
+                if (prop.HasSetter)
+                {
+                    sb.AppendLine($"        {setterMod}set");
+                    sb.AppendLine("        {");
+                    sb.AppendLine($"            var __old = {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
+                    sb.AppendLine($"            if (global::System.Collections.Generic.EqualityComparer<{typeRef}>.Default.Equals(__old, value))");
+                    sb.AppendLine("                return;");
+                    sb.AppendLine();
+                    sb.AppendLine($"            {storeExpr}.Set(\"{escKey}\", value);");
+                    sb.AppendLine($"            this.On{prop.Name}Changed(__old, value);");
+                    if (emitNotify)
+                        sb.AppendLine($"            this.PropertyChanged?.Invoke(this, __BindEvents.{prop.Name});");
+                    sb.AppendLine("        }");
+                }
                 sb.AppendLine("    }");
-                sb.AppendLine($"    partial void On{prop.Name}Changed({typeRef} oldValue, {typeRef} newValue);");
+                if (prop.HasSetter)
+                    sb.AppendLine($"    partial void On{prop.Name}Changed({typeRef} oldValue, {typeRef} newValue);");
                 if (i < info.Properties.Count - 1)
                     sb.AppendLine();
             }
@@ -1211,6 +1289,64 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return char.ToUpperInvariant(name[0]) + name.Substring(1);
     }
 
+    static string BuildDefaultLiteral(TypedConstant tc, ITypeSymbol targetType)
+    {
+        // Caller guarantees tc is not null and implicitly convertible to targetType.
+        string body = tc.Kind switch
+        {
+            TypedConstantKind.Primitive => FormatPrimitive(tc.Value),
+            TypedConstantKind.Enum => $"({tc.Type!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}){FormatPrimitive(tc.Value)}",
+            TypedConstantKind.Type when tc.Value is ITypeSymbol ts =>
+                $"typeof({ts.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})",
+            _ => FormatPrimitive(tc.Value)
+        };
+
+        // Add an explicit cast when the constant's CLR type differs from the target's — handles
+        // int → long, int → enum (already cast above), and Nullable<T> wrapping.
+        if (tc.Type is not null && !SymbolEqualityComparer.Default.Equals(tc.Type, targetType))
+            return $"({targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})({body})";
+
+        return body;
+    }
+
+    static string FormatPrimitive(object? value) => value switch
+    {
+        null => "null",
+        bool b => b ? "true" : "false",
+        string s => "\"" + EscapeString(s) + "\"",
+        char c => "'" + EscapeChar(c) + "'",
+        float f => f.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "F",
+        double d => d.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "D",
+        decimal m => m.ToString(System.Globalization.CultureInfo.InvariantCulture) + "M",
+        long l => l.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L",
+        ulong ul => ul.ToString(System.Globalization.CultureInfo.InvariantCulture) + "UL",
+        uint ui => ui.ToString(System.Globalization.CultureInfo.InvariantCulture) + "U",
+        IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? "null"
+    };
+
+    static string EscapeChar(char c) => c switch
+    {
+        '\'' => "\\'",
+        '\\' => "\\\\",
+        '\0' => "\\0",
+        '\n' => "\\n",
+        '\r' => "\\r",
+        '\t' => "\\t",
+        _ => c.ToString()
+    };
+
+    static string AccessibilityToKeyword(Accessibility accessibility) => accessibility switch
+    {
+        Accessibility.Public => "public",
+        Accessibility.Internal => "internal",
+        Accessibility.Protected => "protected",
+        Accessibility.ProtectedOrInternal => "protected internal",
+        Accessibility.ProtectedAndInternal => "private protected",
+        Accessibility.Private => "private",
+        _ => "public"
+    };
+
     static string EscapeString(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     static string EscapeJsonString(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     static string EscapeXml(string s) => s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
@@ -1328,6 +1464,20 @@ class BindPropertyInfo
     /// <summary>Literal C# expression for the store key (DI service key). Null/empty means default store.</summary>
     public string? StoreKeyExpression { get; set; }
     public string? KeyOverride { get; set; }
+    /// <summary>C# keyword for the property's overall accessibility (e.g. "public", "internal"). Mirrored from the defining partial declaration.</summary>
+    public string PropertyAccessibility { get; set; } = "public";
+    /// <summary>C# keyword for the getter when it has an explicit modifier different from the property's. Null when the getter inherits the property's accessibility.</summary>
+    public string? GetterAccessibility { get; set; }
+    /// <summary>C# keyword for the setter when it has an explicit modifier different from the property's. Null when the setter inherits the property's accessibility.</summary>
+    public string? SetterAccessibility { get; set; }
+    /// <summary>True when the defining declaration has a setter; false for get-only partial properties.</summary>
+    public bool HasSetter { get; set; }
+    /// <summary>C# literal expression for the default value (e.g. <c>"dark"</c>, <c>42</c>, <c>(MyEnum)1</c>). Null when no default was specified.</summary>
+    public string? DefaultLiteral { get; set; }
+    /// <summary>Set when <c>Default</c> was specified but its type isn't implicitly convertible to the property type — surfaces as diagnostic DI002.</summary>
+    public string? DefaultTypeError { get; set; }
+    /// <summary>Location of the <c>[Bind]</c> attribute for diagnostic reporting.</summary>
+    public Location? AttributeLocation { get; set; }
 }
 
 class AIToolInterfaceInfo

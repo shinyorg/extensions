@@ -1,0 +1,23 @@
+﻿{
+  Diagnostics: [
+    {
+      Location: /*
+    {
+        [Bind(Default = "not-a-number")]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        public partial int RetryCount { get; set; }
+*/
+ : (6,9)-(6,39),
+      Message: Default value of type 'string' is not implicitly convertible to property type 'int'.,
+      Severity: Error,
+      Descriptor: {
+        Id: DI002,
+        Title: Invalid [Bind] default value,
+        MessageFormat: {0},
+        Category: Usage,
+        DefaultSeverity: Error,
+        IsEnabledByDefault: true
+      }
+    }
+  ]
+}

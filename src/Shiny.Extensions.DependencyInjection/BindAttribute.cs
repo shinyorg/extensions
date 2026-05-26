@@ -21,4 +21,12 @@ public class BindAttribute : Attribute
 
     /// <summary>Override the storage key. Defaults to the property name.</summary>
     public string? Key { get; set; }
+
+    /// <summary>
+    /// Optional default value returned by the generated getter when the store does not contain a value
+    /// for this key. Must be a compile-time constant (primitive, string, enum, or <c>typeof</c>) whose
+    /// type is implicitly convertible to the property type — the source generator verifies this and
+    /// emits diagnostic <c>DI002</c> on mismatch.
+    /// </summary>
+    public object? Default { get; set; }
 }
