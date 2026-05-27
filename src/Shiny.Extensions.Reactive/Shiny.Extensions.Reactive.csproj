@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFrameworks>$(BaseTargetFramework)</TargetFrameworks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="System.Reactive"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Shiny.Extensions.Reflector\Shiny.Extensions.Reflector.csproj" />
+    </ItemGroup>
+</Project>

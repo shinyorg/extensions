@@ -4,6 +4,7 @@
         "projects": [
             "src\\Shiny.Extensions.DependencyInjection.SourceGenerators\\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj",
             "src\\Shiny.Extensions.DependencyInjection\\Shiny.Extensions.DependencyInjection.csproj",
+            "src\\Shiny.Extensions.Reactive\\Shiny.Extensions.Reactive.csproj",
             "src\\Shiny.Extensions.Reflector.SourceGenerators\\Shiny.Extensions.Reflector.SourceGenerators.csproj",
             "src\\Shiny.Extensions.Reflector\\Shiny.Extensions.Reflector.csproj",
             "src\\Shiny.Extensions.Stores\\Shiny.Extensions.Stores.csproj",

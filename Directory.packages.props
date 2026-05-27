@@ -11,6 +11,7 @@
         <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)"/>
         <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0"/>
         <PackageVersion Include="Microsoft.Maui.Core" Version="$(MauiVersion)"/>
+        <PackageVersion Include="System.Reactive" Version="6.1.0"/>
     </ItemGroup>
     <ItemGroup>
         <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0"/>

@@ -19,13 +19,15 @@
         <Project Path="samples/Sample.Maui/Sample.Maui.csproj" />
         <Project Path="samples/Sample.Web/Sample.Web.csproj" />
         <Project Path="samples/Reflector/Samples.Reflector.csproj" />
-        <Project Path="Sample\Sample.csproj" />
+        <Project Path="samples\Sample\Sample.csproj" />
         <Project Path="tests\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Maui.Tests\Shiny.Extensions.Maui.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Reflector.Benchmarks\Shiny.Extensions.Reflector.Benchmarks.csproj" />
+        <Project Path="tests\Shiny.Extensions.Reactive.Tests\Shiny.Extensions.Reactive.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Reflector.Tests\Shiny.Extensions.Reflector.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj" />
     </Folder>
+    <Project Path="src/Shiny.Extensions.Reactive/Shiny.Extensions.Reactive.csproj" />
     <Project Path="src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" />
     <Project Path="src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" />
     <Project Path="src\Shiny.Extensions.Reflector.SourceGenerators\Shiny.Extensions.Reflector.SourceGenerators.csproj" />
