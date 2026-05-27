@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Maui.Hosting;
-using Microsoft.Maui.LifecycleEvents;
 using Shiny.Impl;
 
 namespace Shiny;
@@ -19,57 +18,11 @@ public static class MauiHostingExtensions
         foreach (var module in modules)
         {
             module.Add(builder);
-            Host.Modules.Add(module);
+            ShinyHost.Modules.Add(module);
         }
 
-        if (!builder.Services.HasImplementation<Host>())
-            builder.Services.AddSingleton<IMauiInitializeService, Host>();
-
-        return builder;
-    }
-
-    /// <summary>
-    /// Wires platform lifecycle events through Shiny's ILifecycleExecutor so handlers
-    /// (IOnApplicationCreated, IOnFinishedLaunching, IAppForeground, etc.) get invoked.
-    /// </summary>
-    public static MauiAppBuilder AddPlatformLifecycle(this MauiAppBuilder builder)
-    {
-#if ANDROID || IOS || MACCATALYST
-        if (builder.Services.HasImplementation<LifecycleExecutor>())
-            return builder;
-
-        builder.Services.AddSingleton<ILifecycleExecutor, LifecycleExecutor>();
-#endif
-
-        builder.ConfigureLifecycleEvents(events =>
-        {
-#if ANDROID
-            events.AddAndroid(android => android
-                .OnApplicationCreate(x => Host.Lifecycle.OnApplicationCreated(x))
-                .OnCreate((activity, savedInstanceState) => Host.Lifecycle.OnActivityOnCreate(activity, savedInstanceState))
-                .OnRequestPermissionsResult((activity, requestCode, permissions, grantResults) => Host.Lifecycle.OnActivityRequestPermissionResult(activity, requestCode, permissions, grantResults))
-                .OnActivityResult((activity, requestCode, result, intent) => Host.Lifecycle.OnActivityResult(activity, requestCode, result, intent))
-                .OnNewIntent((activity, intent) => Host.Lifecycle.OnActivityNewIntent(activity, intent))
-            );
-#elif APPLE
-            events.AddiOS(ios => ios
-                .WillEnterForeground(_ => Host.Lifecycle.OnAppForeground())
-                .DidEnterBackground(_ => Host.Lifecycle.OnAppBackground())
-                .FinishedLaunching((_, del) =>
-                {
-                    Host.Lifecycle.OnFinishLaunching(del);
-                    return true;
-                })
-                .ContinueUserActivity((_, activity, handler) => Host.Lifecycle.OnContinueUserActivity(activity))
-            );
-#elif WINDOWS
-            // events.AddWindows(win => win
-            //     .OnLaunching((app, args) => { })
-            //     .OnClosed((app, args) => { })
-            //     .OnVisibilityChanged((app, args) => { })
-            // );
-#endif
-        });
+        if (!builder.Services.HasImplementation<ShinyHost>())
+            builder.Services.AddSingleton<IMauiInitializeService, ShinyHost>();
 
         return builder;
     }

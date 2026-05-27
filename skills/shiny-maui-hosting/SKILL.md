@@ -1,26 +1,15 @@
 ---
 name: shiny-maui-hosting
-description: Generate and configure Shiny MAUI Hosting for .NET - modular MAUI app configuration with IMauiModule, static Host.Services access, platform lifecycle hooks, IAppSupport (device info + orientation/culture/timezone change events + programmatic orientation lock), and IAppStore (cross-platform store version lookups and deep links for Apple, Google, Microsoft stores)
+description: Generate and configure Shiny MAUI Hosting for .NET - modular MAUI app configuration with IMauiModule, static Host.Services access, IAppSupport (device info + orientation/culture/timezone change events + programmatic orientation lock), and IAppStore (cross-platform store version lookups and deep links for Apple, Google, Microsoft stores)
 auto_invoke: true
 triggers:
   - IMauiModule
   - Shiny.Extensions.MauiHosting
-  - ILifecycleExecutor
-  - IAppForeground
-  - IAppBackground
-  - IContinueActivity
-  - IOnFinishedLaunching
-  - IOnApplicationCreated
-  - IOnActivityOnCreate
-  - IOnActivityRequestPermissionsResult
-  - IOnActivityNewIntent
-  - IOnActivityResult
   - Host.Services
   - IAppSupport
   - IAppStore
   - AppStoreOptions
   - AppStoreResult
-  - AddPlatformLifecycle
   - AddAppSupport
   - AddAppStore
   - AddInfrastructureModules
@@ -33,15 +22,15 @@ triggers:
 
 # Shiny MAUI Hosting Skill
 
-You are an expert in Shiny Extensions MAUI Hosting, a .NET library providing modular MAUI app configuration via `IMauiModule`, a static service provider accessor, platform lifecycle hooks, an `IAppSupport` service for device info and orientation/culture/timezone change detection, and an `IAppStore` service for cross-platform store info and deep links.
+You are an expert in Shiny Extensions MAUI Hosting, a .NET library providing modular MAUI app configuration via `IMauiModule`, a static service provider accessor, an `IAppSupport` service for device info and orientation/culture/timezone change detection, and an `IAppStore` service for cross-platform store info and deep links.
+
+Platform lifecycle hooks (`IIosLifecycle.*`, `IAndroidLifecycle.*`, `IMacLifecycle.*`) are wired automatically by `UseShiny()` from `Shiny.Hosting.Maui` — they are not handled by this library.
 
 ## When to Use This Skill
 
 Invoke this skill when the user wants to:
 - Create MAUI hosting modules with `IMauiModule`
-- Use platform lifecycle hooks (`IAppForeground`, `IAppBackground`, etc.)
 - Access the service provider via `Host.Services`
-- Handle platform-specific events (activity results, universal links)
 - React to orientation, culture, or time-zone changes via `IAppSupport`
 - Programmatically lock or reset device orientation
 - Check store version / deep-link to store / launch a review page via `IAppStore`
@@ -64,7 +53,6 @@ var builder = MauiApp.CreateBuilder();
 builder
     .UseMauiApp<App>()
     .AddInfrastructureModules(new MyModule(), new AnotherModule())
-    .AddPlatformLifecycle()                       // ILifecycleExecutor + ConfigureLifecycleEvents
     .AddAppSupport()                              // IAppSupport
     .AddAppStore(opts =>                          // IAppStore + IOptions<AppStoreOptions>
     {
@@ -122,7 +110,7 @@ var service = Host.Services.GetRequiredService<IMyService>();
 ```
 
 :::caution
-`Host.Services` throws `InvalidOperationException` if accessed before initialization. `Host.Lifecycle` is internal — lifecycle dispatch is handled automatically.
+`Host.Services` throws `InvalidOperationException` if accessed before initialization.
 :::
 
 ## IAppSupport
@@ -267,63 +255,7 @@ Android version detection relies on scraping the Play Store HTML. Google changes
 
 ## Platform Lifecycle Hooks
 
-`AddPlatformLifecycle()` registers `ILifecycleExecutor` and wires MAUI's `ConfigureLifecycleEvents`. Register services that implement lifecycle interfaces to respond to platform events — the executor dispatches to all registered handlers automatically.
-
-### Shared (All Platforms)
-
-```csharp
-[Singleton]
-public class AppLifecycleHandler : IAppForeground, IAppBackground
-{
-    public void OnForeground() { /* app came to foreground */ }
-    public void OnBackground() { /* app went to background */ }
-}
-```
-
-| Interface | Purpose |
-|-----------|---------|
-| `IAppForeground` | App entering foreground |
-| `IAppBackground` | App entering background |
-
-### Apple (iOS / macOS)
-
-```csharp
-[Singleton]
-public class DeepLinkHandler : IContinueActivity
-{
-    public bool Handle(NSUserActivity activity)
-    {
-        // Handle universal links, handoff, etc.
-        return true;
-    }
-}
-```
-
-| Interface | Purpose |
-|-----------|---------|
-| `IContinueActivity` | Universal links, handoff |
-| `IOnFinishedLaunching` | App finished launching |
-
-### Android
-
-```csharp
-[Singleton]
-public class PermissionHandler : IOnActivityRequestPermissionsResult
-{
-    public void Handle(Activity activity, int requestCode, string[] permissions, Permission[] grantResults)
-    {
-        // Handle permission results
-    }
-}
-```
-
-| Interface | Purpose |
-|-----------|---------|
-| `IOnApplicationCreated` | Application creation |
-| `IOnActivityOnCreate` | Activity creation |
-| `IOnActivityRequestPermissionsResult` | Permission request results |
-| `IOnActivityNewIntent` | New intent received |
-| `IOnActivityResult` | Activity result callback |
+Platform lifecycle is wired by `UseShiny()` in `Shiny.Hosting.Maui` — register handlers against the per-platform interfaces in `Shiny.Core` (`IIosLifecycle.*`, `IMacLifecycle.*`, `IAndroidLifecycle.*`). This library does not duplicate that surface.
 
 ## API Summary
 
@@ -331,7 +263,6 @@ public class PermissionHandler : IOnActivityRequestPermissionsResult
 public static class MauiHostingExtensions
 {
     public static MauiAppBuilder AddInfrastructureModules(this MauiAppBuilder builder, params IEnumerable<IMauiModule> modules);
-    public static MauiAppBuilder AddPlatformLifecycle(this MauiAppBuilder builder);
     public static MauiAppBuilder AddAppSupport(this MauiAppBuilder builder);
     public static MauiAppBuilder AddAppStore(this MauiAppBuilder builder, Action<AppStoreOptions>? configure = null);
     public static MauiAppBuilder AddAppStore(this MauiAppBuilder builder, string? appleAppId = null, string? androidPackageName = null, string? windowsProductId = null, string? countryCode = null);
@@ -349,8 +280,8 @@ public class Host : IMauiInitializeService
 - Keep `Add()` for service registration and `Use()` for post-build initialization
 - Do NOT block in `Use()` — it runs on the main thread during app startup
 - Use `Host.Services` to resolve services after the app is built
-- Register lifecycle handlers (`IAppForeground`, `IAppBackground`, etc.) via DI for platform events
-- For each capability the app needs (lifecycle, AppSupport, AppStore), call the matching `Add*` extension — they don't auto-register
+- Register platform lifecycle handlers against `IIosLifecycle.*` / `IAndroidLifecycle.*` / `IMacLifecycle.*` (Shiny.Core); `UseShiny()` dispatches them
+- For each capability the app needs (AppSupport, AppStore), call the matching `Add*` extension — they don't auto-register
 - For `IAppStore` on Windows, always configure `WindowsProductId` — there's no auto-detect (the package family name from `AppInfo` is a different concept than the Store ProductId)
 
 ## Best Practices
@@ -358,6 +289,6 @@ public class Host : IMauiInitializeService
 1. **One concern per module** — separate modules for analytics, networking, auth, etc.
 2. **Never block in Use()** — if you need async work, use `Task.Run` or similar
 3. **Use Host.Services sparingly** — prefer constructor injection; use `Host.Services` only where DI is unavailable
-4. **Register lifecycle handlers via DI** — use `[Singleton]` attributes on lifecycle handler classes
+4. **Register lifecycle handlers via DI** — use `[Singleton]` attributes on platform lifecycle handler classes (Shiny.Core's `IIosLifecycle.*` / `IAndroidLifecycle.*` / `IMacLifecycle.*`)
 5. **Detach event handlers** — `IAppSupport`'s native listeners auto-stop when the last subscriber detaches, so always unsubscribe on dispose/teardown to free the OS listener
 6. **Cache `AppStoreResult`** — store lookups are network calls; don't call `GetCurrent` on every navigation

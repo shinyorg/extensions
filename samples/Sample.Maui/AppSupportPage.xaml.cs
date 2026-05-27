@@ -14,7 +14,7 @@ public partial class AppSupportPage : ContentPage
         this.InitializeComponent();
 
         // Host.Services is populated by Shiny once MAUI finishes initializing — safe to resolve here.
-        this.appSupport = Host.Services.GetService(typeof(IAppSupport)) as IAppSupport
+        this.appSupport = ShinyHost.Services.GetService(typeof(IAppSupport)) as IAppSupport
             ?? throw new InvalidOperationException("IAppSupport not registered — did you call AddAppSupport()?");
 
         this.RenderDeviceInfo();

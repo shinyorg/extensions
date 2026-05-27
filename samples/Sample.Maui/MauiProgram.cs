@@ -16,9 +16,8 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             })
-            // The four Shiny calls — opt into each capability explicitly.
+            // Opt into each Shiny capability explicitly. Platform lifecycle is wired by UseShiny.
             .AddInfrastructureModules()
-            .AddPlatformLifecycle()
             .AddAppSupport();
 
 #if DEBUG

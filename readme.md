@@ -184,7 +184,6 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 ## MAUI Hosting Extensions
 * Module-based MAUI app configuration with `IMauiModule`
 * Static `Host.Services` for accessing the service provider anywhere
-* Platform lifecycle hooks via `ILifecycleExecutor` (foreground/background events, activity results, etc.)
 * `IAppSupport` — device info, browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/Windows, polling fallback elsewhere)
 * `IAppStore` — cross-platform store version lookups + deep links for Apple App Store (iTunes Search API), Google Play (HTML scrape), and Microsoft Store (DisplayCatalog API)
 * Opt-in registration: each capability is its own extension method so apps only pay for what they use
@@ -216,7 +215,6 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
    builder
        .UseMauiApp<App>()
        .AddInfrastructureModules(new MyMauiModule())   // your IMauiModule list
-       .AddPlatformLifecycle()                         // lifecycle hooks
        .AddAppSupport()                                // IAppSupport
        .AddAppStore(opts =>                            // optional: IAppStore + config
        {
