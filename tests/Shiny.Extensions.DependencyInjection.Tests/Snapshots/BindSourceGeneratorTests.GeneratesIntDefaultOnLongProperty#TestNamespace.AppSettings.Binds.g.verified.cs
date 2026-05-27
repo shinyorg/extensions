@@ -11,7 +11,7 @@ partial class AppSettings
         get => global::Shiny.StoreExtensions.Get<long>(global::Shiny.Stores.Default, "Counter", (long)(0));
         set
         {
-            var __old = global::Shiny.Stores.Default.Get<long>("Counter")!;
+            var __old = global::Shiny.StoreExtensions.Get<long>(global::Shiny.Stores.Default, "Counter", (long)(0));
             if (global::System.Collections.Generic.EqualityComparer<long>.Default.Equals(__old, value))
                 return;
 

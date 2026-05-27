@@ -11,7 +11,7 @@ partial class AppSettings
         get => global::Shiny.StoreExtensions.Get<int>(global::Shiny.Stores.Default, "RetryCount", 5);
         set
         {
-            var __old = global::Shiny.Stores.Default.Get<int>("RetryCount")!;
+            var __old = global::Shiny.StoreExtensions.Get<int>(global::Shiny.Stores.Default, "RetryCount", 5);
             if (global::System.Collections.Generic.EqualityComparer<int>.Default.Equals(__old, value))
                 return;
 

@@ -11,7 +11,7 @@ partial class AppSettings
         get => global::Shiny.StoreExtensions.Get<bool>(global::Shiny.Stores.Default, "IsEnabled", true);
         set
         {
-            var __old = global::Shiny.Stores.Default.Get<bool>("IsEnabled")!;
+            var __old = global::Shiny.StoreExtensions.Get<bool>(global::Shiny.Stores.Default, "IsEnabled", true);
             if (global::System.Collections.Generic.EqualityComparer<bool>.Default.Equals(__old, value))
                 return;
 

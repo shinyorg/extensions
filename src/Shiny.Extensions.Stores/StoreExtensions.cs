@@ -16,6 +16,11 @@ public static class StoreExtensions
     /// </summary>
     public static T Get<T>(this IKeyValueStore store, string key, T defaultValue)
     {
+        // Contains check first — IKeyValueStore.Get<T> returns default(T) for absent keys, which
+        // is indistinguishable from a stored 0/false/default-enum without asking Contains.
+        if (!store.Contains(key))
+            return defaultValue;
+
         var value = store.Get<T>(key);
         return value is null ? defaultValue : value;
     }

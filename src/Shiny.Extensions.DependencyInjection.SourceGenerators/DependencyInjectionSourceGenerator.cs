@@ -767,6 +767,11 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             {
                 Name = prop.Name,
                 FullTypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                // WithMiscellaneousOptions REPLACES the bitfield, so OR in the existing options
+                // (e.g. UseSpecialTypes) to preserve int/string keyword rendering alongside the nullable marker.
+                DeclTypeName = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat
+                    .WithMiscellaneousOptions(SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions
+                        | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier)),
                 StoreKeyExpression = storeKeyExpr,
                 KeyOverride = keyOverride,
                 PropertyAccessibility = propAccess,
@@ -953,7 +958,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 var getterMod = prop.GetterAccessibility is null ? "" : prop.GetterAccessibility + " ";
                 var setterMod = prop.SetterAccessibility is null ? "" : prop.SetterAccessibility + " ";
 
-                sb.AppendLine($"    {prop.PropertyAccessibility} partial {typeRef} {prop.Name}");
+                sb.AppendLine($"    {prop.PropertyAccessibility} partial {prop.DeclTypeName} {prop.Name}");
                 sb.AppendLine("    {");
                 if (prop.DefaultLiteral is not null)
                     sb.AppendLine($"        {getterMod}get => global::Shiny.StoreExtensions.Get<{typeRef}>({storeExpr}, \"{escKey}\", {prop.DefaultLiteral});");
@@ -963,7 +968,14 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 {
                     sb.AppendLine($"        {setterMod}set");
                     sb.AppendLine("        {");
-                    sb.AppendLine($"            var __old = {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
+                    // __old must reflect the effective getter value (including default) so a write of the
+                    // default literal still persists. Otherwise — for a value-type with [Bind(Default = X)]
+                    // and an absent key — __old defaults to default(T), so writing default(T) short-circuits
+                    // and the property keeps returning the literal X instead of the user-assigned value.
+                    if (prop.DefaultLiteral is not null)
+                        sb.AppendLine($"            var __old = global::Shiny.StoreExtensions.Get<{typeRef}>({storeExpr}, \"{escKey}\", {prop.DefaultLiteral});");
+                    else
+                        sb.AppendLine($"            var __old = {storeExpr}.Get<{typeRef}>(\"{escKey}\")!;");
                     sb.AppendLine($"            if (global::System.Collections.Generic.EqualityComparer<{typeRef}>.Default.Equals(__old, value))");
                     sb.AppendLine("                return;");
                     sb.AppendLine();
@@ -986,7 +998,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                 }
                 sb.AppendLine("    }");
                 if (prop.HasSetter)
-                    sb.AppendLine($"    partial void On{prop.Name}Changed({typeRef} oldValue, {typeRef} newValue);");
+                    sb.AppendLine($"    partial void On{prop.Name}Changed({prop.DeclTypeName} oldValue, {prop.DeclTypeName} newValue);");
                 if (i < info.Properties.Count - 1)
                     sb.AppendLine();
             }
@@ -1550,7 +1562,10 @@ class BindClassInfo
 class BindPropertyInfo
 {
     public string Name { get; set; } = string.Empty;
+    /// <summary>Non-nullable form — safe for <c>typeof(...)</c> and as a generic-method type argument.</summary>
     public string FullTypeName { get; set; } = string.Empty;
+    /// <summary>Nullable-aware form used when emitting the partial property declaration so the implementation part matches the declaring part's signature.</summary>
+    public string DeclTypeName { get; set; } = string.Empty;
     /// <summary>Literal C# expression for the store key (DI service key). Null/empty means default store.</summary>
     public string? StoreKeyExpression { get; set; }
     public string? KeyOverride { get; set; }

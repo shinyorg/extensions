@@ -11,7 +11,7 @@ partial class AppSettings
         get => global::Shiny.StoreExtensions.Get<global::TestNamespace.Mode>(global::Shiny.Stores.Default, "Setting", (global::TestNamespace.Mode)2);
         set
         {
-            var __old = global::Shiny.Stores.Default.Get<global::TestNamespace.Mode>("Setting")!;
+            var __old = global::Shiny.StoreExtensions.Get<global::TestNamespace.Mode>(global::Shiny.Stores.Default, "Setting", (global::TestNamespace.Mode)2);
             if (global::System.Collections.Generic.EqualityComparer<global::TestNamespace.Mode>.Default.Equals(__old, value))
                 return;
 

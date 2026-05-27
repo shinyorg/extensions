@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Shiny.Extensions.Stores.Tests;
 
 
+[Collection("ShinyStoresStatic")]
 public class StoresStaticTests : IDisposable
 {
     public StoresStaticTests() => Shiny.Stores.Reset();

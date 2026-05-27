@@ -11,7 +11,7 @@ partial class AppSettings
         get => global::Shiny.StoreExtensions.Get<string>(global::Shiny.Stores.Default, "Theme", "dark");
         set
         {
-            var __old = global::Shiny.Stores.Default.Get<string>("Theme")!;
+            var __old = global::Shiny.StoreExtensions.Get<string>(global::Shiny.Stores.Default, "Theme", "dark");
             if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(__old, value))
                 return;
 

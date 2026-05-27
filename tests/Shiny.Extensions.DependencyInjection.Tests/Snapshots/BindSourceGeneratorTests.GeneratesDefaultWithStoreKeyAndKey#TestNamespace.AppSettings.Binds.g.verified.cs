@@ -11,7 +11,7 @@ partial class AppSettings
         get => global::Shiny.StoreExtensions.Get<string>(global::Shiny.Stores.Secure, "auth-token", "anonymous");
         set
         {
-            var __old = global::Shiny.Stores.Secure.Get<string>("auth-token")!;
+            var __old = global::Shiny.StoreExtensions.Get<string>(global::Shiny.Stores.Secure, "auth-token", "anonymous");
             if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(__old, value))
                 return;
 
