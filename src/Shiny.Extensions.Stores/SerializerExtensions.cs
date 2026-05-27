@@ -10,25 +10,14 @@ namespace Shiny;
 public static class SerializerExtensions
 {
     /// <summary>
-    /// Registers a <see cref="JsonSerializerContext"/> so its types can be
-    /// serialized/deserialized by <see cref="ISerializer"/> in an AOT-compatible way.
+    /// Adds a <see cref="JsonSerializerContext"/> to the shared
+    /// <see cref="Stores.Serializer"/> so its types can be serialized in an
+    /// AOT-compatible way, and ensures the serializer is registered in DI.
     /// </summary>
     public static IServiceCollection AddJsonContext(this IServiceCollection services, JsonSerializerContext context)
     {
-        var serializer = GetOrCreateSerializer(services);
-        serializer.AddContext(context);
+        Stores.Serializer.AddContext(context);
+        services.TryAddSingleton<ISerializer>(Stores.Serializer);
         return services;
-    }
-
-
-    internal static DefaultSerializer GetOrCreateSerializer(IServiceCollection services)
-    {
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISerializer));
-        if (descriptor?.ImplementationInstance is DefaultSerializer existing)
-            return existing;
-
-        var serializer = new DefaultSerializer();
-        services.Replace(ServiceDescriptor.Singleton<ISerializer>(serializer));
-        return serializer;
     }
 }

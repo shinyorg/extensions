@@ -75,33 +75,41 @@ public static class StoreExtensions
 
 
     /// <summary>
-    /// Registers Shiny store services: <see cref="ISerializer"/> and platform-native keyed
-    /// <see cref="IKeyValueStore"/> for <see cref="StoreKeys.Default"/> and <see cref="StoreKeys.Secure"/>.
-    /// After building the service provider, call <see cref="UseShinyStores(IServiceProvider)"/>
-    /// (or a host-specific overload) to wire up the <see cref="Stores"/> static accessor.
+    /// Registers Shiny store services into DI: the shared <see cref="ISerializer"/>
+    /// (<see cref="Stores.Serializer"/>) and keyed <see cref="IKeyValueStore"/> for
+    /// <see cref="StoreKeys.Default"/> and <see cref="StoreKeys.Secure"/>. The DI
+    /// registrations resolve to the same singletons that <see cref="Stores.Default"/>
+    /// and <see cref="Stores.Secure"/> return, so static and DI consumers share state.
     /// </summary>
+    /// <remarks>
+    /// No post-build <c>UseShinyStores</c> call is required for mobile/desktop —
+    /// the static accessor self-bootstraps on first access. <c>UseShinyStores</c>
+    /// remains available for scenarios where a store must be constructed from the
+    /// service provider (e.g. Blazor's <c>LocalStorageKeyValueStore</c> needs
+    /// <c>IJSRuntime</c>) so it can be snapshotted into the static.
+    /// </remarks>
     public static IServiceCollection AddShinyStores(this IServiceCollection services)
     {
-        services.TryAddSingleton<ISerializer, DefaultSerializer>();
+        services.TryAddSingleton<ISerializer>(Stores.Serializer);
 
-#if PLATFORM
-        if (!services.Any(x => x.ServiceType == typeof(IKeyValueStore) && x.ServiceKey?.Equals(StoreKeys.Default) == true))
-        {
-            services.AddKeyedSingleton<IKeyValueStore, SettingsKeyValueStore>(StoreKeys.Default);
-            services.AddKeyedSingleton<IKeyValueStore, SecureKeyValueStore>(StoreKeys.Secure);
-        }
-#else
-        services.TryAddKeyedSingleton<IKeyValueStore, MemoryKeyValueStore>(StoreKeys.Default);
-        services.TryAddKeyedSingleton<IKeyValueStore, MemoryKeyValueStore>(StoreKeys.Secure);
-#endif
+        services.TryAddKeyedSingleton<IKeyValueStore>(
+            StoreKeys.Default,
+            (_, _) => Stores.Default
+        );
+        services.TryAddKeyedSingleton<IKeyValueStore>(
+            StoreKeys.Secure,
+            (_, _) => Stores.Secure
+        );
         return services;
     }
 
 
     /// <summary>
-    /// Initializes the <see cref="Stores"/> static accessor with the given service provider.
-    /// Call this once after the service provider is built (e.g. after <c>host.Build()</c>,
-    /// <c>builder.Build()</c>, or <c>services.BuildServiceProvider()</c>).
+    /// Snapshots keyed <see cref="IKeyValueStore"/> registrations from the built
+    /// service provider into the <see cref="Stores"/> static accessor. Optional on
+    /// mobile/desktop (the static self-bootstraps); needed when a store can only be
+    /// constructed via DI — for example Blazor's <c>LocalStorageKeyValueStore</c>,
+    /// which depends on <c>IJSRuntime</c>.
     /// </summary>
     public static IServiceProvider UseShinyStores(this IServiceProvider services)
     {

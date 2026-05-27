@@ -16,10 +16,17 @@ public static class WebStoreRegistration
     /// <c>&lt;script src="_content/Shiny.Extensions.Stores.Web/shiny-storage.js"&gt;&lt;/script&gt;</c>
     /// in their index.html before blazor.webassembly.js.
     /// </summary>
+    /// <remarks>
+    /// Because the localStorage store requires <c>IJSRuntime</c>, the
+    /// <see cref="Shiny.Stores"/> static accessor will only be wired up after the
+    /// service provider is built. Call <c>host.Services.UseShinyStores()</c> once
+    /// after <c>builder.Build()</c> so persistent-service property getters
+    /// (which read <c>Shiny.Stores.Default</c>) resolve to the JS-backed store.
+    /// </remarks>
     public static IServiceCollection AddLocalStorageKeyValueStore(this IServiceCollection services)
     {
-        services.AddShinyStores();
-        services.AddKeyedSingleton<IKeyValueStore, LocalStorageKeyValueStore>(StoreKeys.Default);
+        services.TryAddSingleton<ISerializer>(Stores.Serializer);
+        services.TryAddKeyedSingleton<IKeyValueStore, LocalStorageKeyValueStore>(StoreKeys.Default);
         services.TryAddSingleton<IKeyValueStore>(sp => sp.GetRequiredKeyedService<IKeyValueStore>(StoreKeys.Default));
         return services;
     }
@@ -33,7 +40,7 @@ public static class WebStoreRegistration
     /// </summary>
     public static IServiceCollection AddLocalStorageRepository(this IServiceCollection services)
     {
-        services.AddShinyStores();
+        services.TryAddSingleton<ISerializer>(Stores.Serializer);
         services.TryAddSingleton<IRepository, LocalStorageRepository>();
         return services;
     }
