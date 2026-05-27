@@ -102,13 +102,12 @@ namespace Sample
 ### Setup
 
 1. Install the NuGet package `Shiny.Extensions.Stores`
-2. Register at startup and initialize the static accessor after build:
+2. Register at startup — the static `Shiny.Stores` accessor self-bootstraps on first use:
    ```csharp
    builder.Services.AddShinyStores();
-
    var host = builder.Build();
-   host.Services.UseShinyStores();   // wires up the static Shiny.Stores accessor
    ```
+   On Blazor WebAssembly (where `LocalStorageKeyValueStore` needs `IJSRuntime`), also call `host.Services.UseShinyStores()` after `Build()` to snapshot the DI-resolved store into the static accessor.
 3. Define your settings as a `partial` class with `[Bind]` partial properties:
    ```csharp
    using Shiny;

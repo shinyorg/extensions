@@ -47,23 +47,29 @@ Stores are registered as **keyed** singletons in DI using `StoreKeys` constants:
 ## Setup
 
 ```csharp
-// Register services
-services.AddShinyStores();              // Mobile/Desktop - platform-native stores
-services.AddShinyWebAssemblyStores();   // Blazor WebAssembly - localStorage
+// Mobile / desktop — platform-native stores
+services.AddShinyStores();
 
-// After building the service provider, wire up the static Shiny.Stores accessor
-var host = builder.Build();
-host.Services.UseShinyStores();
+// Blazor WebAssembly — localStorage (still needs UseShinyStores after Build,
+// because IJSRuntime is only available post-build)
+services.AddShinyWebAssemblyStores();
 ```
 
-`AddShinyStores()` no longer registers a hosted initializer. You **must** call
-`serviceProvider.UseShinyStores()` (or `Shiny.Stores.Initialize(serviceProvider)`)
-once after the service provider is built — otherwise the static accessor throws
-`InvalidOperationException` on first use.
+On mobile/desktop you **do not need** a post-build `UseShinyStores()` call.
+`Shiny.Stores.Default` / `Shiny.Stores.Secure` are self-bootstrapping: on first
+access they lazily create the platform-native store (SharedPreferences /
+NSUserDefaults / Keychain / DPAPI / `MemoryKeyValueStore`). `AddShinyStores()`
+just registers those same instances into DI so keyed `IKeyValueStore` injections
+share them.
+
+For Blazor (where the store needs `IJSRuntime` from the built provider) call
+`host.Services.UseShinyStores()` after `host.Build()` to snapshot the keyed
+`IKeyValueStore` registrations into the static accessor.
 
 ## Static `Shiny.Stores` Accessor
 
-The simplest way to read/write — populated by `UseShinyStores()` after the service provider is built.
+The simplest way to read/write — self-bootstraps on first access. No
+initialization required for mobile/desktop.
 
 ```csharp
 Shiny.Stores.Default.Set("theme", "dark");
@@ -71,12 +77,25 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 
 Shiny.Stores.Secure.Set("token", "abc123");
 
-// Arbitrary keyed stores
+// Arbitrary keyed stores (must be registered with Stores.Register or via DI + UseShinyStores)
 Shiny.Stores.Keyed("my-store").Set("k", "v");
 ```
 
-For unit tests / host-less scenarios, call `serviceProvider.UseShinyStores()`
-(or `Shiny.Stores.Initialize(serviceProvider)`) directly after `BuildServiceProvider()`.
+### Overrides / Tests / Custom Keys
+
+```csharp
+// Swap any key for a test double or custom backend
+Shiny.Stores.Register(StoreKeys.Default, new MemoryKeyValueStore());
+Shiny.Stores.Register("redis", new RedisKeyValueStore(...));
+
+// Or snapshot keyed IKeyValueStore registrations from a built provider:
+serviceProvider.UseShinyStores();
+// Equivalent low-level call:
+Shiny.Stores.Initialize(serviceProvider);
+
+// Reset between tests:
+Shiny.Stores.Reset();
+```
 
 ## DI-Style Access
 
@@ -136,4 +155,5 @@ store.IncrementValue(key);              // Thread-safe integer increment
 
 1. **Use `[Bind]` for settings classes** — eliminates boilerplate, no INPC needed, AOT-clean
 2. **Target the secure store** — always use `[Bind("secure")]` for sensitive values
-3. **Always call `UseShinyStores()` after build** — `AddShinyStores()` no longer registers a hosted initializer. After `host.Build()` / `builder.Build()` / `services.BuildServiceProvider()`, call `serviceProvider.UseShinyStores()` (or `Shiny.Stores.Initialize(serviceProvider)`) once, otherwise the static `Shiny.Stores` accessor throws on first use
+3. **Mobile/desktop needs no post-build call** — `Shiny.Stores` self-bootstraps on first access. `UseShinyStores()` is only needed for Blazor (because `IJSRuntime` requires the built provider) or when you've registered custom keyed `IKeyValueStore`s in DI that you want snapshotted into the static accessor
+4. **Use `Stores.Register` in tests** — pair with `Stores.Reset()` between tests to swap in `MemoryKeyValueStore` or any custom double
