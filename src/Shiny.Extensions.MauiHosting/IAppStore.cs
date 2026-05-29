@@ -5,6 +5,16 @@ public interface IAppStore
     Task<AppStoreResult?> GetCurrent(CancellationToken cancellationToken = default);
     Task<bool> OpenStore();
     Task<bool> OpenReviewPage();
+
+    /// <summary>
+    /// Presents the platform's native in-app review prompt without leaving the app
+    /// (iOS/macOS SKStoreReviewController, Windows StoreContext). The OS may silently
+    /// suppress the prompt based on its own throttling, so a <c>true</c> result means
+    /// the prompt was requested — not that the user saw or completed it.
+    /// Android has no dependency-free in-app review API, so it falls back to
+    /// <see cref="OpenReviewPage"/>.
+    /// </summary>
+    Task<bool> RequestReview();
 }
 
 public record AppStoreResult(

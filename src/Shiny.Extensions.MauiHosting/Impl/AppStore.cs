@@ -19,6 +19,7 @@ public sealed partial class AppStore : IAppStore
 
     public Task<bool> OpenStore() => this.OpenStoreCore();
     public Task<bool> OpenReviewPage() => this.OpenReviewPageCore();
+    public Task<bool> RequestReview() => this.RequestReviewCore();
 
     // Non-platform fallback. Platform partials in Platforms/{Apple,Android,Windows}/AppStore.cs
     // supply the real implementations on their respective TFMs.
@@ -28,5 +29,6 @@ public sealed partial class AppStore : IAppStore
 
     Task<bool> OpenStoreCore() => Task.FromResult(false);
     Task<bool> OpenReviewPageCore() => Task.FromResult(false);
+    Task<bool> RequestReviewCore() => Task.FromResult(false);
 #endif
 }

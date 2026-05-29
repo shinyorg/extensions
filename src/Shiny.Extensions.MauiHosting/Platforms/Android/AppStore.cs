@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.Maui.ApplicationModel;
+using Xamarin.Google.Android.Play.Core.Review;
 
 namespace Shiny.Impl;
 
@@ -59,4 +60,42 @@ public sealed partial class AppStore
 
     // Play Store opens the listing on the reviews tab when the user scrolls — there is no separate review URL.
     Task<bool> OpenReviewPageCore() => this.OpenStoreCore();
+
+    async Task<bool> RequestReviewCore()
+    {
+        var activity = Platform.CurrentActivity;
+        if (activity == null)
+            return false;
+
+        try
+        {
+            var manager = ReviewManagerFactory.Create(activity);
+
+            // Play Core surfaces results through GMS Task completion listeners rather than awaitables,
+            // so bridge each flow to a TaskCompletionSource.
+            var requestTcs = new TaskCompletionSource<Android.Gms.Tasks.Task>();
+            manager.RequestReviewFlow().AddOnCompleteListener(new ReviewFlowListener(requestTcs));
+            var requestFlow = await requestTcs.Task.ConfigureAwait(false);
+
+            if (!requestFlow.IsSuccessful || requestFlow.Result is not ReviewInfo reviewInfo)
+                return false;
+
+            var launchTcs = new TaskCompletionSource<Android.Gms.Tasks.Task>();
+            manager.LaunchReviewFlow(activity, reviewInfo).AddOnCompleteListener(new ReviewFlowListener(launchTcs));
+            var launchFlow = await launchTcs.Task.ConfigureAwait(false);
+
+            // The OS may suppress the actual sheet (quota); a successful flow is the best signal available.
+            return launchFlow.IsSuccessful;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    sealed class ReviewFlowListener(TaskCompletionSource<Android.Gms.Tasks.Task> tcs)
+        : Java.Lang.Object, Android.Gms.Tasks.IOnCompleteListener
+    {
+        public void OnComplete(Android.Gms.Tasks.Task task) => tcs.TrySetResult(task);
+    }
 }

@@ -13,6 +13,11 @@
         <PackageReference Include="Microsoft.Maui.Core"/>
     </ItemGroup>
 
+    <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+        <PackageReference Include="Xamarin.Google.Android.Play.Review"/>
+        <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core"/>
+    </ItemGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" />
     </ItemGroup>

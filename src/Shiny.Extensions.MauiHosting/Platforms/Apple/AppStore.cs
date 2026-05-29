@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Maui.ApplicationModel;
+using StoreKit;
+using UIKit;
 
 namespace Shiny.Impl;
 
@@ -64,6 +66,40 @@ public sealed partial class AppStore
             return Task.FromResult(false);
 
         return Launcher.Default.TryOpenAsync(new Uri($"itms-apps://itunes.apple.com/app/id{appId}?action=write-review"));
+    }
+
+    Task<bool> RequestReviewCore()
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                // RequestReview(UIWindowScene) is the iOS 14+ API; pick the foreground-active scene
+                // so the prompt anchors to the visible window in multi-scene apps.
+                var scene = UIApplication.SharedApplication.ConnectedScenes
+                    .OfType<UIWindowScene>()
+                    .FirstOrDefault(s => s.ActivationState == UISceneActivationState.ForegroundActive)
+                    ?? UIApplication.SharedApplication.ConnectedScenes
+                        .OfType<UIWindowScene>()
+                        .FirstOrDefault();
+
+                if (scene != null)
+                {
+                    SKStoreReviewController.RequestReview(scene);
+                    tcs.SetResult(true);
+                }
+                else
+                {
+                    tcs.SetResult(false);
+                }
+            }
+            catch (Exception)
+            {
+                tcs.SetResult(false);
+            }
+        });
+        return tcs.Task;
     }
 
     static bool TryGetVersion(JsonElement element, string propertyName, out Version version)

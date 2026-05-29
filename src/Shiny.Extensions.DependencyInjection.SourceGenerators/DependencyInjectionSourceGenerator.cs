@@ -357,8 +357,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
 
     static void Execute(Compilation compilation, ImmutableArray<ServiceInfo?> services, AnalyzerConfigOptionsProvider configOptions, SourceProductionContext context)
     {
-        // Always generate the extension class, even if there are no services
-        var validServices = services.IsDefaultOrEmpty 
+        var validServices = services.IsDefaultOrEmpty
             ? []
             : services
                 .Where(s => s != null)
@@ -390,6 +389,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
             .GroupBy(s => s.FullClassName)
             .Select(g => g.First())
             .ToList();
+
+        // Don't emit the extension class (and AddGeneratedServices method) when no services were found
+        if (uniqueServices.Count == 0)
+            return;
 
         // Generate a single extension class for all types in the assembly
         var targetNamespace = GetTargetNamespace(compilation, configOptions);

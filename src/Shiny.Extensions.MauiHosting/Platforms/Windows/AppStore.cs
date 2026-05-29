@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Maui.ApplicationModel;
+using Windows.Services.Store;
 
 namespace Shiny.Impl;
 
@@ -94,5 +95,18 @@ public sealed partial class AppStore
             return Task.FromResult(false);
 
         return Launcher.Default.TryOpenAsync(new Uri($"ms-windows-store://review/?ProductId={this.options.WindowsProductId}"));
+    }
+
+    async Task<bool> RequestReviewCore()
+    {
+        try
+        {
+            var result = await StoreContext.GetDefault().RequestRateAndReviewAppAsync();
+            return result.Status == StoreRateAndReviewStatus.Succeeded;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 }
