@@ -141,6 +141,47 @@ public static class Stores
         }
     }
 
+    /// <summary>
+    /// Creates an isolated scope for tests: resets all static registrations, then registers
+    /// fresh in-memory stores for <see cref="StoreKeys.Default"/> and <see cref="StoreKeys.Secure"/>
+    /// so [Bind]-backed types route through transient storage instead of the platform-native
+    /// store. Disposing the returned scope clears the registrations again so the next test
+    /// (or host run) starts clean.
+    ///
+    /// Because Shiny.Stores is static, tests using this helper must not run in parallel against
+    /// each other — apply <c>[Collection("ShinyStores")]</c> (or any shared xUnit collection
+    /// name) to every test class that depends on bound settings.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// public sealed class MyTests : IDisposable
+    /// {
+    ///     readonly IDisposable scope = Shiny.Stores.CreateTestScope();
+    ///     public void Dispose() => scope.Dispose();
+    /// }
+    /// </code>
+    /// </example>
+    public static IDisposable CreateTestScope()
+    {
+        lock (syncLock)
+        {
+            defaultStore = new MemoryKeyValueStore();
+            secureStore = new MemoryKeyValueStore();
+            custom.Clear();
+        }
+        return new ResetOnDispose();
+    }
+
+    sealed class ResetOnDispose : IDisposable
+    {
+        int disposed;
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref disposed, 1) == 0)
+                Reset();
+        }
+    }
+
 #if ANDROID
     static IKeyValueStore CreateDefault() => new SettingsKeyValueStore(Serializer);
     static IKeyValueStore CreateSecure() => new SecureKeyValueStore(Serializer);

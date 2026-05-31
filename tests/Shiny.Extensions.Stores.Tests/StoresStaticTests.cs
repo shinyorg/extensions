@@ -93,4 +93,49 @@ public class StoresStaticTests : IDisposable
         var fromDi = provider.GetRequiredService<ISerializer>();
         fromDi.ShouldBeSameAs(Shiny.Stores.Serializer);
     }
+
+
+    [Fact(DisplayName = "CreateTestScope - registers fresh memory stores for Default and Secure")]
+    public void TestScope_RegistersMemoryStores()
+    {
+        using var _ = Shiny.Stores.CreateTestScope();
+
+        Shiny.Stores.Default.ShouldBeOfType<MemoryKeyValueStore>();
+        Shiny.Stores.Secure.ShouldBeOfType<MemoryKeyValueStore>();
+        Shiny.Stores.Secure.ShouldNotBeSameAs(Shiny.Stores.Default);
+    }
+
+
+    [Fact(DisplayName = "CreateTestScope - is isolated from prior Register calls")]
+    public void TestScope_IsolatesFromPriorState()
+    {
+        var preexisting = new MemoryKeyValueStore();
+        preexisting.Set("leak", "value");
+        Shiny.Stores.Register(StoreKeys.Default, preexisting);
+
+        using var _ = Shiny.Stores.CreateTestScope();
+
+        Shiny.Stores.Default.ShouldNotBeSameAs(preexisting);
+        Shiny.Stores.Default.Contains("leak").ShouldBeFalse();
+    }
+
+
+    [Fact(DisplayName = "CreateTestScope - dispose resets to bootstrap-on-next-access state")]
+    public void TestScope_DisposeResets()
+    {
+        var scope = Shiny.Stores.CreateTestScope();
+        var inScope = Shiny.Stores.Default;
+        scope.Dispose();
+
+        Shiny.Stores.Default.ShouldNotBeSameAs(inScope);
+    }
+
+
+    [Fact(DisplayName = "CreateTestScope - double dispose is a no-op")]
+    public void TestScope_DoubleDisposeIsSafe()
+    {
+        var scope = Shiny.Stores.CreateTestScope();
+        scope.Dispose();
+        Should.NotThrow(scope.Dispose);
+    }
 }

@@ -33,13 +33,8 @@ public partial class BindDefaultsHost
 [Collection("ShinyStoresStatic")]
 public class BindDefaultRuntimeTests : IDisposable
 {
-    public BindDefaultRuntimeTests()
-    {
-        Shiny.Stores.Reset();
-        Shiny.Stores.Register(StoreKeys.Default, new MemoryKeyValueStore());
-    }
-
-    public void Dispose() => Shiny.Stores.Reset();
+    readonly IDisposable scope = Shiny.Stores.CreateTestScope();
+    public void Dispose() => this.scope.Dispose();
 
 
     [Fact(DisplayName = "Bind Default - string returns literal when store empty")]
