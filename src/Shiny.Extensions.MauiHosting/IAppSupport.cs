@@ -48,4 +48,6 @@ public interface IAppSupport
         double longitude,
         NavigationMode navigationMode = NavigationMode.None
     );
+
+    void OpenAppSettings();
 }

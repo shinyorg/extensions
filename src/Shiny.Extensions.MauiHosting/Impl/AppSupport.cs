@@ -147,6 +147,8 @@ public sealed partial class AppSupport : IAppSupport, IDisposable
         }
     );
 
+    public void OpenAppSettings() => AppInfo.ShowSettingsUI();
+
     public Task<bool> SetOrientation(DisplayOrientation orientation)
         => this.ApplyOrientation(orientation);
 
