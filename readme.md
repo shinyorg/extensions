@@ -90,6 +90,43 @@ namespace Sample
    ```
 3. Add the `[Service(ServiceLifetime.Singleton, "optional key")]` attribute to your classes and specify the lifetime and optional key
 
+## Serialization
+* Centralized `ISerializer` backed by source-generated `JsonSerializerContext`s, no reflection, AOT-clean
+* `Shiny.Json` static accessor — self-bootstrapping, sibling to `Shiny.Stores` for mobile cold-start
+* `[ShinyJsonContext]` on any user-declared `JsonSerializerContext` partial → source generator emits a `[ModuleInitializer]` that auto-registers it. No `services.AddJsonContext(...)` boilerplate needed
+* `[ShinyJsonInclude]` on a type (or `[assembly: ShinyJsonInclude(typeof(T))]`) → AOT-safe collection wrappers for `List<T>`, `T[]`, `IEnumerable<T>`, `IReadOnlyList<T>`, `IList<T>`, `ICollection<T>`, `IAsyncEnumerable<T>` — solves the "inline `[JsonConverter]` works but `List<T>` fails" trap
+* Multiple contributing libraries chain cleanly via `TypeInfoResolverChain`. Element types from one context compose with collection wrappers from another
+* `services.AddJsonSerialization()` / `AddJsonContext(...)` / `ConfigureJsonSerializer(...)` for DI-side wiring; `Shiny.Json.CreateTestScope()` for test isolation
+
+### Setup
+
+1. Install the NuGet package `Shiny.Extensions.Serialization`
+2. Write a normal STJ source-generator context and decorate it with `[Shiny.ShinyJsonContext]`:
+   ```csharp
+   using System.Text.Json.Serialization;
+   using Shiny;
+
+   [ShinyJsonContext]
+   [JsonSerializable(typeof(MyDto))]
+   [JsonSerializable(typeof(MyOtherDto))]
+   internal partial class MyAppJsonContext : JsonSerializerContext;
+   ```
+3. Done. The generator emits a `[ModuleInitializer]` calling `Shiny.Json.AddContext(MyAppJsonContext.Default)` before `Main`, so both DI consumers and the static `Shiny.Json.Default` accessor see your types — no `services.AddJsonContext(...)` call needed.
+4. (Optional) For collection support, mark element types with `[ShinyJsonInclude]`:
+   ```csharp
+   [ShinyJsonInclude]
+   public partial class MyDto { /* ... */ }
+   ```
+   `List<MyDto>`, `MyDto[]`, `IEnumerable<MyDto>` and friends now serialize AOT-safely.
+
+```csharp
+// Static access — works before DI exists (useful for mobile cold-start through Shiny.Stores)
+var json = Shiny.Json.Default.Serialize(new MyDto { Name = "Allan" });
+
+// DI access — same shared instance
+public class MyService(ISerializer serializer) { /* ... */ }
+```
+
 ## Stores
 * Cross-platform key/value store with support for
   * Android/iOS/Windows - Preferences & Secure Storage
@@ -272,6 +309,7 @@ public class UpdateChecker(IAppStore store)
 | Package | Description |
 |---------|-------------|
 | `Shiny.Extensions.DependencyInjection` | Attribute-driven DI registration with source generators |
+| `Shiny.Extensions.Serialization` | Centralized AOT-safe JSON serializer + `[ShinyJsonContext]`/`[ShinyJsonInclude]` source generator |
 | `Shiny.Extensions.Stores` | Cross-platform key/value store abstraction |
 | `Shiny.Extensions.Stores.Web` | Blazor WebAssembly localStorage/sessionStorage |
 | `Shiny.Extensions.WebHosting` | ASP.NET modular web hosting with `IWebModule` |

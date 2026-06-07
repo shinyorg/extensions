@@ -24,6 +24,13 @@ public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
             if (!prefs.Contains(key))
                 return default;
 
+            // Enums are written via the default branch in Set (boxed enum values do not
+            // match `case int i:`), so they land in SharedPreferences as JSON strings.
+            // Routing through TypeCode.Int32 would call GetInt on a string-typed entry
+            // and throw ClassCastException.
+            if (typeof(T).IsEnum)
+                return serializer.Deserialize<T>(prefs.GetString(key, String.Empty)!);
+
             return Type.GetTypeCode(typeof(T)) switch
             {
                 TypeCode.Boolean => (T)(object)prefs.GetBoolean(key, false),

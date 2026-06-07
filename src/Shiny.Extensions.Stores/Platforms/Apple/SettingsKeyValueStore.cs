@@ -22,6 +22,12 @@ public class SettingsKeyValueStore(ISerializer serializer) : IKeyValueStore
         if (prefs.ValueForKey(new NSString(key)) == null)
             return default;
 
+        // Enums are written via the default branch in Set (boxed enum values do not
+        // match `case int i:`), so they land in NSUserDefaults as JSON strings. Route
+        // them through the serializer to keep the read/write paths symmetric.
+        if (typeof(T).IsEnum)
+            return serializer.Deserialize<T>(prefs.StringForKey(key) ?? string.Empty);
+
         return Type.GetTypeCode(typeof(T)) switch
         {
             TypeCode.Boolean => (T)(object)prefs.BoolForKey(key),
