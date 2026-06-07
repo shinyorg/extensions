@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shiny.Extensions.Stores;
-using Shiny.Extensions.Stores.Infrastructure;
 
 namespace Shiny;
 
@@ -81,7 +80,7 @@ public static class StoreExtensions
 
     /// <summary>
     /// Registers Shiny store services into DI: the shared <see cref="ISerializer"/>
-    /// (<see cref="Stores.Serializer"/>) and keyed <see cref="IKeyValueStore"/> for
+    /// (<see cref="Shiny.Json.Default"/>) and keyed <see cref="IKeyValueStore"/> for
     /// <see cref="StoreKeys.Default"/> and <see cref="StoreKeys.Secure"/>. The DI
     /// registrations resolve to the same singletons that <see cref="Stores.Default"/>
     /// and <see cref="Stores.Secure"/> return, so static and DI consumers share state.
@@ -95,7 +94,7 @@ public static class StoreExtensions
     /// </remarks>
     public static IServiceCollection AddShinyStores(this IServiceCollection services)
     {
-        services.TryAddSingleton<ISerializer>(Stores.Serializer);
+        services.AddJsonSerialization();
 
         services.TryAddKeyedSingleton<IKeyValueStore>(
             StoreKeys.Default,

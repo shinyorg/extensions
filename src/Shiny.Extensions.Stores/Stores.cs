@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Shiny.Extensions.Stores;
-using Shiny.Extensions.Stores.Infrastructure;
 
 namespace Shiny;
 
@@ -28,12 +27,13 @@ public static class Stores
     static IKeyValueStore? secureStore;
 
     /// <summary>
-    /// The shared <see cref="DefaultSerializer"/> used by the static platform stores
-    /// and registered into DI by <see cref="StoreExtensions.AddShinyStores"/>.
-    /// Add <c>JsonSerializerContext</c> sources via <c>services.AddJsonContext(...)</c>
-    /// or directly on <see cref="DefaultSerializer.AddContext"/>.
+    /// The shared <see cref="ISerializer"/> used by the static platform stores and
+    /// registered into DI by <see cref="StoreExtensions.AddShinyStores"/>. Source-generated
+    /// <c>[ShinyJsonInclude]</c> module initializers populate this before <c>Main</c>.
+    /// Hand-written contexts may be added via <c>services.AddJsonContext(...)</c> or
+    /// <see cref="Shiny.Json.AddContext"/>.
     /// </summary>
-    public static DefaultSerializer Serializer { get; } = new();
+    public static ISerializer Serializer => Shiny.Json.Default;
 
     /// <summary>The default settings store (keyed <see cref="StoreKeys.Default"/>).</summary>
     public static IKeyValueStore Default

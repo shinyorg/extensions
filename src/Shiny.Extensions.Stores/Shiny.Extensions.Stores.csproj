@@ -16,4 +16,8 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Shiny.Extensions.Serialization\Shiny.Extensions.Serialization.csproj" />
+    </ItemGroup>
 </Project>

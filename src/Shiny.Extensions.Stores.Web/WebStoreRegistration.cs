@@ -25,7 +25,7 @@ public static class WebStoreRegistration
     /// </remarks>
     public static IServiceCollection AddLocalStorageKeyValueStore(this IServiceCollection services)
     {
-        services.TryAddSingleton<ISerializer>(Stores.Serializer);
+        services.AddJsonSerialization();
         services.TryAddKeyedSingleton<IKeyValueStore, LocalStorageKeyValueStore>(StoreKeys.Default);
         services.TryAddSingleton<IKeyValueStore>(sp => sp.GetRequiredKeyedService<IKeyValueStore>(StoreKeys.Default));
         return services;
@@ -40,7 +40,7 @@ public static class WebStoreRegistration
     /// </summary>
     public static IServiceCollection AddLocalStorageRepository(this IServiceCollection services)
     {
-        services.TryAddSingleton<ISerializer>(Stores.Serializer);
+        services.AddJsonSerialization();
         services.TryAddSingleton<IRepository, LocalStorageRepository>();
         return services;
     }

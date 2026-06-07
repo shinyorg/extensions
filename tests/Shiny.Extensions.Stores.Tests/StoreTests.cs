@@ -9,9 +9,9 @@ public partial class StoreTests(ITestOutputHelper output) : IDisposable
     IKeyValueStore? currentStore;
 
 
-    internal static DefaultSerializer CreateSerializer()
+    internal static DefaultJsonSerializer CreateSerializer()
     {
-        var s = new DefaultSerializer();
+        var s = new DefaultJsonSerializer();
         s.Options.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver());
         return s;
     }

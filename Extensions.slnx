@@ -25,9 +25,12 @@
         <Project Path="tests\Shiny.Extensions.Reflector.Benchmarks\Shiny.Extensions.Reflector.Benchmarks.csproj" />
         <Project Path="tests\Shiny.Extensions.Reactive.Tests\Shiny.Extensions.Reactive.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Reflector.Tests\Shiny.Extensions.Reflector.Tests.csproj" />
+        <Project Path="tests\Shiny.Extensions.Serialization.Tests\Shiny.Extensions.Serialization.Tests.csproj" />
         <Project Path="tests\Shiny.Extensions.Stores.Tests\Shiny.Extensions.Stores.Tests.csproj" />
     </Folder>
     <Project Path="src/Shiny.Extensions.Reactive/Shiny.Extensions.Reactive.csproj" />
+    <Project Path="src/Shiny.Extensions.Serialization/Shiny.Extensions.Serialization.csproj" />
+    <Project Path="src/Shiny.Extensions.Serialization.SourceGenerators/Shiny.Extensions.Serialization.SourceGenerators.csproj" />
     <Project Path="src\Shiny.Extensions.DependencyInjection.SourceGenerators\Shiny.Extensions.DependencyInjection.SourceGenerators.csproj" />
     <Project Path="src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" />
     <Project Path="src\Shiny.Extensions.Reflector.SourceGenerators\Shiny.Extensions.Reflector.SourceGenerators.csproj" />

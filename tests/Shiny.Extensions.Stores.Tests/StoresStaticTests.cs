@@ -83,7 +83,7 @@ public class StoresStaticTests : IDisposable
     }
 
 
-    [Fact(DisplayName = "AddShinyStores - ISerializer is the shared Stores.Serializer")]
+    [Fact(DisplayName = "AddShinyStores - ISerializer is the shared Shiny.Json.Default")]
     public void AddShinyStoresSerializerShared()
     {
         var services = new ServiceCollection();
@@ -91,7 +91,7 @@ public class StoresStaticTests : IDisposable
         var provider = services.BuildServiceProvider();
 
         var fromDi = provider.GetRequiredService<ISerializer>();
-        fromDi.ShouldBeSameAs(Shiny.Stores.Serializer);
+        fromDi.ShouldBeSameAs(Shiny.Json.Default);
     }
 
 

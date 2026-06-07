@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <Description>A centralized JSON serializer for Shiny with AOT-safe source-generated context contribution via [ShinyJsonInclude].</Description>
+        <PackageTags>shiny json serialization sourcegeneration aot</PackageTags>
+        <RootNamespace>Shiny</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Shiny.Extensions.Serialization.SourceGenerators\Shiny.Extensions.Serialization.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+
+        <None Include="..\Shiny.Extensions.Serialization.SourceGenerators\bin\$(Configuration)\netstandard2.0\Shiny.Extensions.Serialization.SourceGenerators.dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false"/>
+    </ItemGroup>
+</Project>
