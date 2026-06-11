@@ -11,7 +11,10 @@ public interface IAppSupport
     string DeviceManufacturer { get; }
     string DeviceModel { get; }
     Version? PlatformVersion { get; }
-
+    string Platform { get; }
+    DeviceIdiom DeviceIdiom { get; }
+    
+    
     DisplayOrientation CurrentOrientation { get; }
     event EventHandler<DisplayOrientation>? OrientationChanged;
 

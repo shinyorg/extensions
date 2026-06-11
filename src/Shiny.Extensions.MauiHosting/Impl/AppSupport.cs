@@ -28,6 +28,8 @@ public sealed partial class AppSupport : IAppSupport, IDisposable
     public string DeviceManufacturer => DeviceInfo.Manufacturer;
     public string DeviceModel => DeviceInfo.Model;
     public Version PlatformVersion => DeviceInfo.Version;
+    public string Platform => DeviceInfo.Platform.ToString();
+    public DeviceIdiom DeviceIdiom => DeviceInfo.Idiom;
 
     public DisplayOrientation CurrentOrientation { get; private set; }
     public CultureInfo CurrentCulture { get; private set; }
