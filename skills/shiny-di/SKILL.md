@@ -7,7 +7,6 @@ triggers:
   - SingletonAttribute
   - ScopedAttribute
   - TransientAttribute
-  - AddShinyServiceRegistry
   - AddGeneratedServices
   - AddSingletonAsImplementedInterfaces
   - AddScopedAsImplementedInterfaces
@@ -91,10 +90,20 @@ public class DefaultLogger : ILogger { }
 
 ```csharp
 // Register all source-generated services
-builder.Services.AddShinyServiceRegistry();
+// AddGeneratedServices is generated into the project's root namespace
+builder.Services.AddGeneratedServices();
 
 // Register with specific categories only
-builder.Services.AddShinyServiceRegistry("premium", "analytics");
+builder.Services.AddGeneratedServices("premium", "analytics");
+```
+
+The extension method name and namespace can be customized via MSBuild properties:
+
+```xml
+<PropertyGroup>
+    <ShinyDIExtensionMethodName>AddMyServices</ShinyDIExtensionMethodName>
+    <ShinyDIExtensionNamespace>My.Custom.Namespace</ShinyDIExtensionNamespace>
+</PropertyGroup>
 ```
 
 ## Helper Extensions
@@ -168,11 +177,11 @@ public partial class AppSettings
 - Choose appropriate lifetime: Singleton for stateless services, Scoped for per-request (DbContext), Transient for lightweight factories
 - Use `Category` for optional features that may not always be registered
 - Use `KeyedName` when multiple implementations of the same interface exist
-- Always call `AddShinyServiceRegistry()` to activate source-generated registrations
+- Always call `AddGeneratedServices()` (generated into the project's root namespace) to activate source-generated registrations
 
 ## Best Practices
 
 1. **Use source generation** - Always prefer `[Singleton]`/`[Scoped]`/`[Transient]` attributes over manual `services.Add*()` calls
-2. **Call AddShinyServiceRegistry()** - Required to activate source-generated registrations
+2. **Call AddGeneratedServices()** - Required to activate source-generated registrations
 3. **Appropriate lifetimes** - Singleton for stateless, Scoped for DbContext/unit-of-work, Transient for factories
 4. **Use keyed services** - When multiple implementations exist, use `KeyedName` to disambiguate
