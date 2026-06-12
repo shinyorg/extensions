@@ -220,7 +220,7 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 ## MAUI Hosting Extensions
 * Module-based MAUI app configuration with `IMauiModule`
 * Static `Host.Services` for accessing the service provider anywhere
-* `IAppSupport` — device info, browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/Windows, polling fallback elsewhere)
+* `IAppSupport` — device info (manufacturer, model, platform, idiom, OS version), browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/Windows, polling fallback elsewhere)
 * `IAppStore` — cross-platform store version lookups + deep links for Apple App Store (iTunes Search API), Google Play (HTML scrape), and Microsoft Store (DisplayCatalog API)
 * Opt-in registration: each capability is its own extension method so apps only pay for what they use
 
@@ -270,6 +270,8 @@ public class MyVm(IAppSupport app)
     {
         // Snapshot
         var version = app.AppVersion;
+        var platform = app.Platform;            // "Android", "iOS", "WinUI", "macOS"
+        var idiom = app.DeviceIdiom;            // Phone, Tablet, Desktop, …
         var orientation = app.CurrentOrientation;
         var culture = app.CurrentCulture;
 
@@ -300,6 +302,42 @@ public class UpdateChecker(IAppStore store)
 }
 ```
 
+## Blazor WebAssembly Hosting Extensions
+* `IAppSupport` for Blazor WebAssembly — app version, browser user-agent (raw string + best-effort parsed browser `Version`), screen and viewport dimensions, plus live culture / time-zone change events
+* Reads browser state synchronously through `IJSInProcessRuntime` (same approach as `Shiny.Extensions.Stores.Web`)
+
+### Setup
+1. Install the NuGet package `Shiny.Extensions.BlazorHosting`
+2. Reference the bundled script in `wwwroot/index.html` **before** `blazor.webassembly.js`:
+   ```html
+   <script src="_content/Shiny.Extensions.BlazorHosting/shiny-appsupport.js"></script>
+   ```
+3. Register at startup, passing the head app's version (no reflection — use the source-generated `ThisAssembly`):
+   ```csharp
+   using Shiny;
+
+   builder.Services.AddAppSupport(ThisAssembly.AssemblyVersion);
+   ```
+4. Inject `IAppSupport` anywhere:
+   ```csharp
+   public class MyComponent(IAppSupport app)
+   {
+       void Hook()
+       {
+           // Snapshot
+           var version = app.AppVersion;
+           var ua = app.UserAgent;
+           var browser = app.UserAgentVersion;
+           var (w, h) = (app.BrowserWidth, app.BrowserHeight);   // viewport — read live
+           var (sw, sh) = (app.ScreenWidth, app.ScreenHeight);   // physical screen
+
+           // Live updates
+           app.CultureChanged += (s, e) => { /* new CultureInfo */ };
+           app.TimeZoneChanged += (s, e) => { /* new TimeZoneInfo */ };
+       }
+   }
+   ```
+
 
 ## Additional Libraries Used
 * [Shiny Reflector](https://github.com/shinyorg/reflector) - Reflection without the actual reflection
@@ -314,3 +352,4 @@ public class UpdateChecker(IAppStore store)
 | `Shiny.Extensions.Stores.Web` | Blazor WebAssembly localStorage/sessionStorage |
 | `Shiny.Extensions.WebHosting` | ASP.NET modular web hosting with `IWebModule` |
 | `Shiny.Extensions.MauiHosting` | MAUI modular hosting with `IMauiModule` and platform lifecycle hooks |
+| `Shiny.Extensions.BlazorHosting` | Blazor WebAssembly `IAppSupport` — browser/device info and culture/time-zone change events |

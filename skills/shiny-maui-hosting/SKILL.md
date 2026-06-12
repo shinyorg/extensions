@@ -124,6 +124,8 @@ public interface IAppSupport
     string DeviceManufacturer { get; }
     string DeviceModel { get; }
     Version? PlatformVersion { get; }
+    string Platform { get; }            // DeviceInfo.Platform.ToString() — "Android", "iOS", "WinUI", "macOS"
+    DeviceIdiom DeviceIdiom { get; }    // DeviceInfo.Idiom — Phone / Tablet / Desktop / TV / Watch
 
     DisplayOrientation CurrentOrientation { get; }
     event EventHandler<DisplayOrientation>? OrientationChanged;
