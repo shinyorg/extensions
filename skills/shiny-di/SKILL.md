@@ -126,7 +126,7 @@ Lazy<IMyService> lazy = services.GetLazyService<IMyService>(required: true);
 
 ## Factory-Form Generation
 
-Every `[Service]`/`[Singleton]`/`[Scoped]`/`[Transient]` attributed class is emitted in **factory form** — the source generator expands the constructor at compile time so registrations are AOT-clean and chain-friendly. Constructor selection mirrors `ActivatorUtilities`: `[ActivatorUtilitiesConstructor]` wins, otherwise the longest constructor is chosen. `[FromKeyedServices("k")]` and `IServiceProvider` parameters are handled. Multi-interface classes get explicit forwarders (no `AddSingletonAsImplementedInterfaces` reflection).
+Every `[Service]`/`[Singleton]`/`[Scoped]`/`[Transient]` attributed class is emitted in **factory form** — the source generator expands the constructor at compile time so registrations are AOT-clean and chain-friendly. Constructor selection mirrors `ActivatorUtilities`: `[ActivatorUtilitiesConstructor]` wins, otherwise the longest constructor is chosen. `[FromKeyedServices("k")]` and `IServiceProvider` parameters are handled. Optional parameters — those with an explicit default (e.g. `IFoo? foo = null`) or a nullable reference annotation — are resolved via `GetService`/`GetKeyedService` (no throw when unregistered) and fall back to the declared default, mirroring `ActivatorUtilities`. Multi-interface classes get explicit forwarders (no `AddSingletonAsImplementedInterfaces` reflection).
 
 ```csharp
 [Singleton]

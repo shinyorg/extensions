@@ -5,6 +5,7 @@
 * Source generate all attributed classes to a single add file - saves you the boilerplate
 * **Factory-form emission** - generated registrations expand the constructor at compile time (no reflection, AOT-clean) so resolve chains like `OnResolved` compose naturally
 * `ActivatorUtilities`-style constructor selection (`[ActivatorUtilitiesConstructor]` and `[FromKeyedServices]` honored)
+* Optional/nullable constructor parameters are respected - resolved via `GetService` (no throw when unregistered) with fallback to the declared default value
 * Multiple interfaces via explicit forwarders (no reflection)
 * Supports open generics and keyed services
 * `OnResolved<T>(hook)` chain extension for one-shot post-construction hooks
