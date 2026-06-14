@@ -323,7 +323,10 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         foreach (var param in picked.Parameters)
         {
             var ns = param.Type.ContainingNamespace?.ToDisplayString() ?? "";
-            var typeName = param.Type.ToDisplayString();
+            // Drop the nullable annotation so the emitted generic argument (GetService<T>) doesn't carry a
+            // trailing '?' — the generated file isn't in a #nullable context and would otherwise warn (CS8632).
+            var paramType = param.Type.WithNullableAnnotation(NullableAnnotation.None);
+            var typeName = paramType.ToDisplayString();
             // ToDisplayString often returns the bare type name (no namespace); prepend explicitly
             var qualifiedName = string.IsNullOrEmpty(ns) || ns == "<global namespace>"
                 ? $"global::{typeName}"
@@ -345,11 +348,24 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
                     keyedExpr = keyVal.ToString();
             }
 
+            // An optional dependency is a parameter the user marked as defaultable — either with an
+            // explicit default value (e.g. `IFoo? foo = null`) or a nullable reference annotation.
+            // These resolve via GetService (no throw when unregistered) and fall back to the default,
+            // mirroring ActivatorUtilities' optional-parameter behavior.
+            var isOptional = param.HasExplicitDefaultValue ||
+                (param.Type.IsReferenceType && param.NullableAnnotation == NullableAnnotation.Annotated);
+
+            string? defaultExpr = null;
+            if (param.HasExplicitDefaultValue && param.ExplicitDefaultValue != null)
+                defaultExpr = BuildParamDefaultLiteral(param);
+
             result.Add(new CtorParam
             {
                 FullTypeName = qualifiedName,
                 IsServiceProvider = isServiceProvider,
-                KeyedKeyExpression = keyedExpr
+                KeyedKeyExpression = keyedExpr,
+                IsOptional = isOptional,
+                DefaultValueExpression = defaultExpr
             });
         }
         return result;
@@ -604,11 +620,25 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         {
             // p.FullTypeName already includes the "global::" prefix (FullyQualifiedFormat)
             if (p.IsServiceProvider)
+            {
                 args.Add("sp");
+            }
+            else if (p.IsOptional)
+            {
+                // Optional dependency: resolve without throwing, then fall back to the declared default.
+                var resolve = p.KeyedKeyExpression != null
+                    ? $"sp.GetKeyedService<{p.FullTypeName}>({p.KeyedKeyExpression})"
+                    : $"sp.GetService<{p.FullTypeName}>()";
+                args.Add(p.DefaultValueExpression != null ? $"{resolve} ?? {p.DefaultValueExpression}" : resolve);
+            }
             else if (p.KeyedKeyExpression != null)
+            {
                 args.Add($"sp.GetRequiredKeyedService<{p.FullTypeName}>({p.KeyedKeyExpression})");
+            }
             else
+            {
                 args.Add($"sp.GetRequiredService<{p.FullTypeName}>()");
+            }
         }
         return $"new {implTypeWithGlobal}({string.Join(", ", args)})";
     }
@@ -1408,6 +1438,22 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator
         return body;
     }
 
+    static string BuildParamDefaultLiteral(IParameterSymbol param)
+    {
+        // Caller guarantees ExplicitDefaultValue is non-null.
+        var value = param.ExplicitDefaultValue;
+
+        // Unwrap Nullable<T> so we render against the underlying type (e.g. enum, int).
+        var type = param.Type;
+        if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable)
+            type = nullable.TypeArguments[0];
+
+        if (type.TypeKind == TypeKind.Enum)
+            return $"({type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}){FormatPrimitive(value)}";
+
+        return FormatPrimitive(value);
+    }
+
     static string FormatPrimitive(object? value) => value switch
     {
         null => "null",
@@ -1541,6 +1587,10 @@ class CtorParam
     public bool IsServiceProvider { get; set; }
     /// <summary>Literal C# expression for the keyed service key, e.g. <c>"alpha"</c> or <c>global::MyConsts.Key</c>. Null if not a keyed param.</summary>
     public string? KeyedKeyExpression { get; set; }
+    /// <summary>True when the parameter is an optional dependency (explicit default value or nullable reference) — resolved via GetService rather than GetRequiredService.</summary>
+    public bool IsOptional { get; set; }
+    /// <summary>C# literal expression for the parameter's default value, used as a fallback when an optional service is unregistered. Null when the fallback is simply null.</summary>
+    public string? DefaultValueExpression { get; set; }
 }
 
 class BindClassInfo

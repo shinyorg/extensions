@@ -122,6 +122,75 @@ public class CtorSelectionTests
 
 
     [Fact]
+    public Task OptionalDependencyWithDefaultNull()
+    {
+        var source = """
+            using Shiny;
+
+            namespace TestNamespace
+            {
+                public interface IDep { }
+                public interface IOptional { }
+                public interface IService { }
+
+                [Singleton]
+                public class MyService : IService
+                {
+                    public MyService(IDep dep, IOptional? optional = null) { }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
+
+
+    [Fact]
+    public Task OptionalNullableReferenceWithoutDefault()
+    {
+        var source = """
+            #nullable enable
+            using Shiny;
+
+            namespace TestNamespace
+            {
+                public interface IDep { }
+                public interface IService { }
+
+                [Singleton]
+                public class MyService : IService
+                {
+                    public MyService(IDep? dep) { }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
+
+
+    [Fact]
+    public Task OptionalKeyedDependency()
+    {
+        var source = """
+            using Microsoft.Extensions.DependencyInjection;
+            using Shiny;
+
+            namespace TestNamespace
+            {
+                public interface ICache { }
+                public interface IService { }
+
+                [Singleton]
+                public class MyService : IService
+                {
+                    public MyService([FromKeyedServices("primary")] ICache? cache = null) { }
+                }
+            }
+            """;
+        return TestHelper.VerifyDI(source);
+    }
+
+
+    [Fact]
     public Task MultiInterfaceEmitsForwarders()
     {
         var source = """
