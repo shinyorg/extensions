@@ -86,7 +86,13 @@ public sealed partial class AppStore
 
                 if (scene != null)
                 {
-                    SKStoreReviewController.RequestReview(scene);
+                    // AppStore.RequestReview is the iOS/Mac Catalyst 16+ replacement; SKStoreReviewController
+                    // was obsoleted on 18+. Fall back to the older API only where the new one isn't available.
+                    if (OperatingSystem.IsIOSVersionAtLeast(16) || OperatingSystem.IsMacCatalystVersionAtLeast(16))
+                        StoreKit.AppStore.RequestReview(scene);
+                    else
+                        SKStoreReviewController.RequestReview(scene);
+
                     tcs.SetResult(true);
                 }
                 else

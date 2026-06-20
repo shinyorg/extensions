@@ -20,5 +20,5 @@
       <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     </ItemGroup>
 
-    <Import Project="..\..\src\Shiny.Extensions.DependencyInjection\build\Shiny.Extensions.DependencyInjection.SourceGenerators.props"/>
+    <Import Project="..\..\src\Shiny.Extensions.DependencyInjection\build\Shiny.Extensions.DependencyInjection.props"/>
 </Project>

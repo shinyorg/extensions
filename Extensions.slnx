@@ -9,7 +9,6 @@
         <File Path=".github\workflows\build.yml" />
         <File Path="Build.slnf" />
         <File Path="Directory.build.props" />
-        <File Path="Directory.build.targets" />
         <File Path="Directory.packages.props" />
         <File Path="readme.md" />
         <File Path="nuget.config" />
