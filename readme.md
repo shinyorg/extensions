@@ -176,14 +176,23 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 | Android      | `StoreKeys.Secure`   | Secure Storage                      |
 | iOS          | `StoreKeys.Default`  | NSUserDefaults                      |
 | iOS          | `StoreKeys.Secure`   | Keychain                            |
-| Windows      | `StoreKeys.Default`  | ApplicationData.LocalSettings       |
-| Windows      | `StoreKeys.Secure`   | Secure Storage                      |
+| Windows (packaged)   | `StoreKeys.Default`  | ApplicationData.LocalSettings       |
+| Windows (packaged)   | `StoreKeys.Secure`   | Secure Storage (DPAPI)              |
+| Windows (unpackaged) | `StoreKeys.Default`  | JSON file (`LocalApplicationData`)  |
+| Windows (unpackaged) | `StoreKeys.Secure`   | JSON file + DPAPI encryption         |
+| macOS (`net10.0-macos`) | `StoreKeys.Default` | NSUserDefaults                    |
+| macOS (`net10.0-macos`) | `StoreKeys.Secure`  | Keychain                          |
+| Linux / other desktop | `StoreKeys.Default` | JSON file (`LocalApplicationData`)  |
+| Linux / other desktop | `StoreKeys.Secure`  | JSON file (**not encrypted**)       |
 | WebAssembly  | `StoreKeys.Default`  | localStorage                        |
 | WebAssembly  | `"session"`          | sessionStorage                      |
-| All          | any                  | In-memory dictionary (great for testing) |
+| All          | any                  | In-memory dictionary (via `MemoryKeyValueStore`, great for testing) |
 
 > [!NOTE]
 > For WebAssembly, install the `Shiny.Extensions.Stores.Web` package and add `services.AddShinyWebAssemblyStores()` to your service collection.
+
+> [!NOTE]
+> A dedicated `net10.0-macos` target gives plain macOS apps NSUserDefaults + Keychain (real secure storage). Other desktop targets that resolve the base `net10.0` asset (Linux, and unpackaged Windows) persist both `Default` and `Secure` to a JSON file under `{LocalApplicationData}/{EntryAssemblyName}` so settings survive restarts. Override the location by setting `Shiny.Stores.FileStoreDirectory` before first access. On these file fallbacks `Secure` is **not** encrypted (unpackaged Windows keeps DPAPI over the file) — treat it as obfuscation, not protection, for sensitive data.
 
 ## Web Hosting Extensions
 * Merges service container build and post build scenarios into a single class using `IWebModule`

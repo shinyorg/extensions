@@ -7,14 +7,20 @@ namespace Shiny.Extensions.Stores;
 
 public class SecureKeyValueStore : IKeyValueStore
 {
-    readonly SettingsKeyValueStore settingsStore;
+    readonly IKeyValueStore settingsStore;
     readonly ISerializer serializer;
 
 
-    public SecureKeyValueStore(ISerializer serializer)
+    /// <summary>
+    /// Creates a DPAPI-encrypted secure store. By default it is backed by the native
+    /// ApplicationData settings container (packaged apps). Pass <paramref name="backingStore"/> to
+    /// persist elsewhere — e.g. a <see cref="FileKeyValueStore"/> for unpackaged desktop apps, which
+    /// still get DPAPI encryption layered over the file.
+    /// </summary>
+    public SecureKeyValueStore(ISerializer serializer, IKeyValueStore? backingStore = null)
     {
         this.serializer = serializer;
-        this.settingsStore = new SettingsKeyValueStore(serializer) { ContainerName = "ShinySecure" };
+        this.settingsStore = backingStore ?? new SettingsKeyValueStore(serializer) { ContainerName = "ShinySecure" };
     }
 
 

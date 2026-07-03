@@ -38,11 +38,23 @@ Stores are registered as **keyed** singletons in DI using `StoreKeys` constants:
 | Key | Platform | Implementation |
 |-----|----------|---------------|
 | `StoreKeys.Default` ("settings") | Android | SharedPreferences |
-| `StoreKeys.Default` ("settings") | iOS/macOS | NSUserDefaults |
-| `StoreKeys.Default` ("settings") | Windows | ApplicationData.LocalSettings |
+| `StoreKeys.Default` ("settings") | iOS / Mac Catalyst / macOS (`net10.0-macos`) | NSUserDefaults |
+| `StoreKeys.Default` ("settings") | Windows (packaged) | ApplicationData.LocalSettings |
+| `StoreKeys.Default` ("settings") | Linux / other desktop / unpackaged Windows | `FileKeyValueStore` (JSON file) |
 | `StoreKeys.Default` ("settings") | Blazor | localStorage |
 | `StoreKeys.Secure` ("secure") | Android | EncryptedSharedPreferences |
-| `StoreKeys.Secure` ("secure") | iOS/macOS | Keychain |
+| `StoreKeys.Secure` ("secure") | iOS / Mac Catalyst / macOS (`net10.0-macos`) | Keychain |
+| `StoreKeys.Secure` ("secure") | Windows | DPAPI (packaged: ApplicationData; unpackaged: over file) |
+| `StoreKeys.Secure` ("secure") | Linux / other desktop | `FileKeyValueStore` (JSON file, **not encrypted**) |
+
+`net10.0-macos` (plain macOS desktop apps) uses Foundation NSUserDefaults + Security.framework
+Keychain — the same code as iOS/Mac Catalyst — so it gets **real** secure storage, not the plaintext
+file fallback. Any target that resolves the base `net10.0` asset (Linux, unpackaged Windows, other
+desktop) uses `FileKeyValueStore`, which persists to `{LocalApplicationData}/{EntryAssemblyName}` — so
+settings survive restarts instead of living only in memory. Override the folder via
+`Shiny.Stores.FileStoreDirectory` **before first access**. On these file fallbacks `Secure` is a plain
+JSON file and is **not encrypted** (unpackaged Windows keeps DPAPI over the file); do not put
+genuinely sensitive secrets there.
 
 ## Setup
 
@@ -58,7 +70,8 @@ services.AddShinyWebAssemblyStores();
 On mobile/desktop you **do not need** a post-build `UseShinyStores()` call.
 `Shiny.Stores.Default` / `Shiny.Stores.Secure` are self-bootstrapping: on first
 access they lazily create the platform-native store (SharedPreferences /
-NSUserDefaults / Keychain / DPAPI / `MemoryKeyValueStore`). `AddShinyStores()`
+NSUserDefaults / Keychain / DPAPI) or a persistent `FileKeyValueStore` on desktop
+targets that resolve the base `net10.0` asset. `AddShinyStores()`
 just registers those same instances into DI so keyed `IKeyValueStore` injections
 share them.
 

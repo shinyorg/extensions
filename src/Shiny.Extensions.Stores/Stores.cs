@@ -1,3 +1,5 @@
+using System.IO;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Shiny.Extensions.Stores;
 
@@ -7,8 +9,12 @@ namespace Shiny;
 /// <summary>
 /// Self-bootstrapping accessor for <see cref="IKeyValueStore"/>. On first access,
 /// <see cref="Default"/> and <see cref="Secure"/> lazily create the platform-native
-/// store (SharedPreferences/Keychain/NSUserDefaults/DPAPI). On non-platform builds
-/// they fall back to <see cref="MemoryKeyValueStore"/>.
+/// store (SharedPreferences/Keychain/NSUserDefaults/DPAPI). On desktop builds that
+/// resolve the base <c>net10.0</c> asset (plain macOS, Linux, and unpackaged Windows)
+/// they fall back to a persistent <see cref="FileKeyValueStore"/> so settings survive
+/// restarts. On those desktop fallbacks the <see cref="Secure"/> store is a plain JSON
+/// file and is <b>not</b> encrypted (except unpackaged Windows, which keeps DPAPI over
+/// the file) — treat it as obfuscation, not protection, for genuinely sensitive data.
 ///
 /// Calling <see cref="StoreExtensions.AddShinyStores"/> registers the same instances
 /// into DI so that <c>IKeyValueStoreFactory</c> and keyed <c>IKeyValueStore</c>
@@ -34,6 +40,15 @@ public static class Stores
     /// <see cref="Shiny.Json.AddContext"/>.
     /// </summary>
     public static ISerializer Serializer => Shiny.Json.Default;
+
+    /// <summary>
+    /// Overrides the directory used by the desktop file-backed store (<see cref="FileKeyValueStore"/>)
+    /// on the base <c>net10.0</c> asset and on unpackaged Windows. When null (default), stores are
+    /// placed under <c>{LocalApplicationData}/{EntryAssemblyName}</c>. Set this before first access to
+    /// <see cref="Default"/>/<see cref="Secure"/>; it has no effect on Android/iOS/macCatalyst or
+    /// packaged Windows, which use the platform-native store.
+    /// </summary>
+    public static string? FileStoreDirectory { get; set; }
 
     /// <summary>The default settings store (keyed <see cref="StoreKeys.Default"/>).</summary>
     public static IKeyValueStore Default
@@ -182,17 +197,43 @@ public static class Stores
         }
     }
 
+    static IKeyValueStore CreateFileStore(string fileName)
+        => new FileKeyValueStore(Path.Combine(ResolveStoreDirectory(), fileName), Serializer);
+
+    static string ResolveStoreDirectory()
+    {
+        if (!String.IsNullOrWhiteSpace(FileStoreDirectory))
+            return FileStoreDirectory!;
+
+        var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var app = Assembly.GetEntryAssembly()?.GetName().Name ?? "Shiny";
+        return Path.Combine(root, app);
+    }
+
 #if ANDROID
     static IKeyValueStore CreateDefault() => new SettingsKeyValueStore(Serializer);
     static IKeyValueStore CreateSecure() => new SecureKeyValueStore(Serializer);
-#elif IOS || MACCATALYST
+#elif IOS || MACCATALYST || __MACOS__
+    // macOS (net10.0-macos) uses the same Foundation NSUserDefaults + Security.framework Keychain
+    // APIs as iOS/Mac Catalyst, so plain macOS desktop apps get real secure storage (not the
+    // plaintext desktop file fallback).
     static IKeyValueStore CreateDefault() => new SettingsKeyValueStore(Serializer);
     static IKeyValueStore CreateSecure() => new SecureKeyValueStore(Serializer);
 #elif WINDOWS
-    static IKeyValueStore CreateDefault() => new SettingsKeyValueStore(Serializer);
-    static IKeyValueStore CreateSecure() => new SecureKeyValueStore(Serializer);
+    // Packaged (MSIX) apps get the native ApplicationData-backed store; unpackaged desktop apps
+    // (WPF/WinForms/console targeting net10.0-windows) would throw on ApplicationData.Current, so
+    // they fall back to the file store — with DPAPI still layered over Secure via SecureKeyValueStore.
+    static IKeyValueStore CreateDefault()
+        => WindowsPlatform.IsPackaged
+            ? new SettingsKeyValueStore(Serializer)
+            : CreateFileStore("settings.json");
+
+    static IKeyValueStore CreateSecure()
+        => WindowsPlatform.IsPackaged
+            ? new SecureKeyValueStore(Serializer)
+            : new SecureKeyValueStore(Serializer, CreateFileStore("secure.json"));
 #else
-    static IKeyValueStore CreateDefault() => new MemoryKeyValueStore();
-    static IKeyValueStore CreateSecure() => new MemoryKeyValueStore();
+    static IKeyValueStore CreateDefault() => CreateFileStore("settings.json");
+    static IKeyValueStore CreateSecure() => CreateFileStore("secure.json");
 #endif
 }
