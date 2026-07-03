@@ -19,6 +19,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Shiny.Extensions.Serialization\Shiny.Extensions.Serialization.csproj" />
+        <ProjectReference Include="..\Shiny.Extensions.Serialization\Shiny.Extensions.Serialization.csproj"/>
     </ItemGroup>
 </Project>
