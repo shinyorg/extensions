@@ -84,6 +84,19 @@ public static class Json
 
         lock (syncLock)
         {
+            // Ignore duplicate registrations of the same resolver/context. The same singleton
+            // context or generated resolver can be installed from more than one path — a
+            // [ModuleInitializer], a DI extension, or a manual call. The first install happens
+            // before the serializer is built; a later duplicate install runs after Default has
+            // been built and used, at which point its JsonSerializerOptions are frozen and
+            // TypeInfoResolverChain.Add would throw. The type is already in the chain from the
+            // first install, so the duplicate is a no-op.
+            foreach (var existing in resolvers)
+            {
+                if (ReferenceEquals(existing, resolver) || existing.GetType() == resolver.GetType())
+                    return;
+            }
+
             resolvers.Add(resolver);
             if (cached is DefaultJsonSerializer dj)
                 dj.Options.TypeInfoResolverChain.Add(resolver);

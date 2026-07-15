@@ -14,7 +14,7 @@
         <PackageVersion Include="System.Reactive" Version="6.1.0"/>
         <PackageVersion Include="Xamarin.Google.Android.Play.Review" Version="2.0.2.7"/>
         <!-- Pins the transitive AndroidX Lifecycle version MAUI already requires, resolving the
-                 NU1107 conflict introduced by Play Review's older Play Core.Common dependency. -->
+                     NU1107 conflict introduced by Play Review's older Play Core.Common dependency. -->
         <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" Version="2.10.0.2"/>
     </ItemGroup>
     <ItemGroup>
@@ -38,7 +38,7 @@
         <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0"/>
         <PackageVersion Include="xunit" Version="2.9.3"/>
         <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5"/>
-        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0"/>
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1"/>
         <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4"/>
     </ItemGroup>
 </Project>
