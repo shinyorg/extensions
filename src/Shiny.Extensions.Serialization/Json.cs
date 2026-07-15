@@ -23,6 +23,7 @@ public static class Json
     static readonly object syncLock = new();
     static readonly List<IJsonTypeInfoResolver> resolvers = new();
     static readonly List<Action<JsonSerializerOptions>> configurators = new();
+    static readonly MutableResolverChain liveChain = new();
     static ISerializer? cached;
 
 
@@ -86,11 +87,7 @@ public static class Json
         {
             // Ignore duplicate registrations of the same resolver/context. The same singleton
             // context or generated resolver can be installed from more than one path — a
-            // [ModuleInitializer], a DI extension, or a manual call. The first install happens
-            // before the serializer is built; a later duplicate install runs after Default has
-            // been built and used, at which point its JsonSerializerOptions are frozen and
-            // TypeInfoResolverChain.Add would throw. The type is already in the chain from the
-            // first install, so the duplicate is a no-op.
+            // [ModuleInitializer], a DI extension, or a manual call.
             foreach (var existing in resolvers)
             {
                 if (ReferenceEquals(existing, resolver) || existing.GetType() == resolver.GetType())
@@ -98,8 +95,15 @@ public static class Json
             }
 
             resolvers.Add(resolver);
-            if (cached is DefaultJsonSerializer dj)
-                dj.Options.TypeInfoResolverChain.Add(resolver);
+
+            // Feed the live chain rather than the built serializer's options directly. A
+            // [ModuleInitializer]-based registration can fire long after Default was first
+            // built and used (e.g. AppSupport's storage/cache services are constructed lazily
+            // by DI at runtime, and their module initializer only runs then). By that point the
+            // options are frozen and TypeInfoResolverChain.Add would throw. The live chain is a
+            // single resolver that was added to the options before they froze; it is consulted
+            // at resolve-time, so newly registered resolvers still take effect afterwards.
+            liveChain.Add(resolver);
         }
     }
 
@@ -169,9 +173,47 @@ public static class Json
         var s = new DefaultJsonSerializer();
         foreach (var cfg in configurators)
             cfg(s.Options);
-        foreach (var r in resolvers)
-            s.Options.TypeInfoResolverChain.Add(r);
+
+        // Sync the live chain to the currently registered resolvers, then add it as the single
+        // entry in the options' resolver chain. From here on, resolvers added via AddResolver
+        // flow through the live chain without ever mutating these (soon-to-be-frozen) options.
+        liveChain.Reset(resolvers);
+        s.Options.TypeInfoResolverChain.Add(liveChain);
         return s;
+    }
+
+
+    /// <summary>
+    /// A single <see cref="IJsonTypeInfoResolver"/> added to the built options' chain that delegates
+    /// to a mutable, lock-free-readable snapshot of resolvers. Lets resolvers be registered after the
+    /// options have been frozen (first use) without mutating the frozen chain.
+    /// </summary>
+    sealed class MutableResolverChain : IJsonTypeInfoResolver
+    {
+        volatile IJsonTypeInfoResolver[] snapshot = Array.Empty<IJsonTypeInfoResolver>();
+
+        public void Reset(IEnumerable<IJsonTypeInfoResolver> items)
+            => this.snapshot = items.ToArray();
+
+        public void Add(IJsonTypeInfoResolver resolver)
+        {
+            var current = this.snapshot;
+            var next = new IJsonTypeInfoResolver[current.Length + 1];
+            Array.Copy(current, next, current.Length);
+            next[current.Length] = resolver;
+            this.snapshot = next;
+        }
+
+        public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options)
+        {
+            foreach (var resolver in this.snapshot)
+            {
+                var info = resolver.GetTypeInfo(type, options);
+                if (info is not null)
+                    return info;
+            }
+            return null;
+        }
     }
 
 

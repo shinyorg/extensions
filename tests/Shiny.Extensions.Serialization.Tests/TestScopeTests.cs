@@ -25,23 +25,45 @@ public class TestScopeTests
     }
 
 
-    [Fact(DisplayName = "Json - duplicate context install after options are frozen is ignored")]
-    public void DuplicateResolver_AfterFreeze_Ignored()
+    [Fact(DisplayName = "Json - resolver installed after options are frozen still resolves its types")]
+    public void ResolverInstalledAfterFreeze_Works()
     {
         try
         {
-            // Build + use the serializer so its JsonSerializerOptions become read-only.
+            // Build + use the serializer so its JsonSerializerOptions become read-only. This
+            // mirrors production: startup serialization (e.g. the geofence store) freezes the
+            // shared options before AppSupport's storage services are ever constructed.
             Json.Default.Serialize(new AutoType { Title = "freeze" });
 
-            // AppJsonContext is already registered via its module initializer. A second install
-            // of the same context — as a late-firing [ModuleInitializer] or a DI extension would
-            // do — must not throw even though the options are now frozen.
-            Should.NotThrow(() => Json.AddContext(AppJsonContext.Default));
+            // Register a brand-new context AFTER the freeze — exactly as a [ModuleInitializer]
+            // does when its assembly is first touched at runtime (AppSupport's storage/cache
+            // services, constructed lazily by DI). This must not throw on the frozen options.
+            Should.NotThrow(() => Json.AddContext(LateSerializationContext.Default));
 
-            // A distinct instance of the same context type is treated as the same registration.
+            // The already-built, frozen serializer now resolves the newly registered type via the
+            // live resolver chain — no rebuild required.
+            var json = Json.Default.Serialize(new LateType { Data = "y" });
+            Json.Default.Deserialize<LateType>(json).Data.ShouldBe("y");
+        }
+        finally
+        {
+            Json.Reset();
+        }
+    }
+
+
+    [Fact(DisplayName = "Json - duplicate context install is ignored")]
+    public void DuplicateResolver_Ignored()
+    {
+        try
+        {
+            Json.Default.Serialize(new AutoType { Title = "freeze" });
+
+            // AppJsonContext is already registered via its module initializer; re-installing the
+            // same context (or another instance of the same type) is a no-op, not a duplicate entry.
+            Should.NotThrow(() => Json.AddContext(AppJsonContext.Default));
             Should.NotThrow(() => Json.AddResolver(new AppJsonContext()));
 
-            // The serializer still works after the ignored duplicate installs.
             var json = Json.Default.Serialize(new AutoType { Title = "ok" });
             Json.Default.Deserialize<AutoType>(json).Title.ShouldBe("ok");
         }

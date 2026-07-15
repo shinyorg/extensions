@@ -76,3 +76,15 @@ public class ManualType
     public string Name { get; set; } = "";
     public int Age { get; set; }
 }
+
+
+// A context/type registered by no default path — used to simulate a [ModuleInitializer]-based
+// resolver install that fires after the shared options have already been built and frozen.
+[JsonSerializable(typeof(LateType))]
+internal partial class LateSerializationContext : JsonSerializerContext;
+
+
+public class LateType
+{
+    public string Data { get; set; } = "";
+}
