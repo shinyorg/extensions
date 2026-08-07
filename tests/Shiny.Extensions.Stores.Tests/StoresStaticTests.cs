@@ -83,6 +83,34 @@ public class StoresStaticTests : IDisposable
     }
 
 
+    [Fact(DisplayName = "AddShinyStores - unkeyed IKeyValueStore resolves the default store")]
+    public void AddShinyStoresUnkeyedDefault()
+    {
+        // containers without keyed service support (Prism/DryIoc, etc) drop [FromKeyedServices]
+        // and ask for the plain IKeyValueStore - it must resolve to the same default store
+        var services = new ServiceCollection();
+        services.AddShinyStores();
+        var provider = services.BuildServiceProvider();
+
+        var unkeyed = provider.GetRequiredService<IKeyValueStore>();
+        unkeyed.ShouldBeSameAs(Shiny.Stores.Default);
+        unkeyed.ShouldBeSameAs(provider.GetRequiredKeyedService<IKeyValueStore>(StoreKeys.Default));
+    }
+
+
+    [Fact(DisplayName = "AddShinyStores - unkeyed IKeyValueStore does not override an app registration")]
+    public void AddShinyStoresUnkeyedDoesNotOverride()
+    {
+        var mine = new MemoryKeyValueStore();
+        var services = new ServiceCollection();
+        services.AddSingleton<IKeyValueStore>(mine);
+        services.AddShinyStores();
+        var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IKeyValueStore>().ShouldBeSameAs(mine);
+    }
+
+
     [Fact(DisplayName = "AddShinyStores - ISerializer is the shared Shiny.Json.Default")]
     public void AddShinyStoresSerializerShared()
     {

@@ -146,6 +146,8 @@ public class MyService(ISerializer serializer) { /* ... */ }
    var host = builder.Build();
    ```
    On Blazor WebAssembly (where `LocalStorageKeyValueStore` needs `IJSRuntime`), also call `host.Services.UseShinyStores()` after `Build()` to snapshot the DI-resolved store into the static accessor.
+
+   `AddShinyStores()` registers `IKeyValueStore` keyed under `StoreKeys.Default` and `StoreKeys.Secure`, **plus the default store unkeyed**. The unkeyed registration exists for third-party container adapters that predate .NET 8 keyed services — Prism's DryIoc container, for example, still sits on DryIoc 5.x, silently ignores `[FromKeyedServices]`, and resolves the plain `IKeyValueStore` instead. On those containers, use the static `Shiny.Stores.Secure` / `Shiny.Stores.Keyed(...)` accessor when you need a non-default store, since the key will be dropped.
 3. Define your settings as a `partial` class with `[Bind]` partial properties:
    ```csharp
    using Shiny;

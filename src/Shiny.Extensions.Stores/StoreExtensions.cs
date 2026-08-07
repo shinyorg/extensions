@@ -84,6 +84,8 @@ public static class StoreExtensions
     /// <see cref="StoreKeys.Default"/> and <see cref="StoreKeys.Secure"/>. The DI
     /// registrations resolve to the same singletons that <see cref="Stores.Default"/>
     /// and <see cref="Stores.Secure"/> return, so static and DI consumers share state.
+    /// <see cref="StoreKeys.Default"/> is additionally registered unkeyed so that
+    /// containers without keyed-service support can still inject the default store.
     /// </summary>
     /// <remarks>
     /// No post-build <c>UseShinyStores</c> call is required for mobile/desktop —
@@ -104,6 +106,12 @@ public static class StoreExtensions
             StoreKeys.Secure,
             (_, _) => Stores.Secure
         );
+
+        // the default store is also registered unkeyed.  Container adapters that predate .NET 8 keyed
+        // services (Prism's DryIoc, for example, still sits on DryIoc 5.x) silently ignore
+        // [FromKeyedServices] and resolve the plain IKeyValueStore instead - with nothing registered
+        // under that service type, every constructor asking for the default store becomes unresolvable
+        services.TryAddSingleton<IKeyValueStore>(_ => Stores.Default);
         return services;
     }
 

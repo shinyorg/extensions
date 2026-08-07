@@ -7,21 +7,19 @@
         <PackageVersion Include="DeviceRunners.UITesting.Xunit" Version="0.1.0-preview.5"/>
         <PackageVersion Include="DeviceRunners.VisualRunners.Maui" Version="0.1.0-preview.5"/>
         <PackageVersion Include="DeviceRunners.VisualRunners.Xunit" Version="0.1.0-preview.5"/>
-        <PackageVersion Include="Microsoft.Extensions.AI" Version="10.7.0"/>
+        <PackageVersion Include="Microsoft.Extensions.AI" Version="10.8.3"/>
+        <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.8.3"/>
+        <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.3"/>
         <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)"/>
         <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0"/>
         <PackageVersion Include="Microsoft.Maui.Core" Version="$(MauiVersion)"/>
-        <PackageVersion Include="System.Reactive" Version="6.1.0"/>
+        <PackageVersion Include="System.Reactive" Version="7.0.0"/>
         <PackageVersion Include="Xamarin.Google.Android.Play.Review" Version="2.0.2.7"/>
-        <!-- Pins the transitive AndroidX Lifecycle version MAUI already requires, resolving the
-                     NU1107 conflict introduced by Play Review's older Play Core.Common dependency. -->
         <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" Version="2.10.0.2"/>
     </ItemGroup>
     <ItemGroup>
         <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0"/>
         <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0"/>
-        <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0"/>
-        <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0"/>
         <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0"/>
         <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0"/>
         <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0"/>
@@ -32,7 +30,7 @@
     </ItemGroup>
     <ItemGroup>
         <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2"/>
-        <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.4"/>
+        <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.5"/>
         <PackageVersion Include="Shouldly" Version="4.3.0"/>
         <PackageVersion Include="Verify.Xunit" Version="31.12.5"/>
         <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0"/>

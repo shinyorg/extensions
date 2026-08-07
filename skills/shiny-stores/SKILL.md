@@ -123,6 +123,30 @@ public class SettingsService(
 }
 ```
 
+`AddShinyStores()` also registers the default store **unkeyed**, so a plain
+`IKeyValueStore` parameter resolves to the same instance as
+`[FromKeyedServices(StoreKeys.Default)]`.
+
+### Third-party containers
+
+Container adapters that predate .NET 8 keyed services — Prism's DryIoc container is the
+common one, it still sits on DryIoc 5.x — silently **ignore** `[FromKeyedServices]` and
+resolve the plain service type instead. The unkeyed registration above is what keeps the
+default store working there. `StoreKeys.Secure` has no such fallback (registering two
+different stores under one service type would be ambiguous), so when generating code for
+an app on a non-Microsoft container, reach for the static accessor instead:
+
+```csharp
+public class SettingsService
+{
+    readonly IKeyValueStore secure = Shiny.Stores.Secure;   // or Shiny.Stores.Keyed("my-store")
+}
+```
+
+A DryIoc `Error.UnableToFindCtorWithAllResolvableArgs` naming a type that injects a keyed
+store is this problem — DryIoc's `ConstructorWithResolvableArguments` rule reports the
+outermost type, not the dependency that actually failed.
+
 ## Source-Generated `[Bind]` Properties
 
 The DI source generator (from `Shiny.Extensions.DependencyInjection`) recognizes `[Bind]` on partial properties and emits getter/setter bodies that round-trip through the static `Shiny.Stores` accessor.
