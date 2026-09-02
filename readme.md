@@ -196,6 +196,9 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 > [!NOTE]
 > A dedicated `net10.0-macos` target gives plain macOS apps NSUserDefaults + Keychain (real secure storage). Other desktop targets that resolve the base `net10.0` asset (Linux, and unpackaged Windows) persist both `Default` and `Secure` to a JSON file under `{LocalApplicationData}/{EntryAssemblyName}` so settings survive restarts. Override the location by setting `Shiny.Stores.FileStoreDirectory` before first access. On these file fallbacks `Secure` is **not** encrypted (unpackaged Windows keeps DPAPI over the file) — treat it as obfuscation, not protection, for sensitive data.
 
+> [!NOTE]
+> On Apple platforms the default store is scoped to the app's **own** preferences domain. `NSUserDefaults.StandardUserDefaults` is a search list — it also resolves through the global domain and through defaults any linked framework registered — so `Contains`/`Get` deliberately ask the app's persistent domain instead. Without that, an ordinary key name (`AutoRecord`, `UseMetric`, `Enabled`) can read back as *present* having never been written, and `Get(key, defaultValue)` would hand back that foreign value instead of your default.
+
 ## Web Hosting Extensions
 * Merges service container build and post build scenarios into a single class using `IWebModule`
 

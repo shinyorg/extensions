@@ -56,6 +56,16 @@ settings survive restarts instead of living only in memory. Override the folder 
 JSON file and is **not encrypted** (unpackaged Windows keeps DPAPI over the file); do not put
 genuinely sensitive secrets there.
 
+On Apple platforms (iOS, Mac Catalyst, `net10.0-macos`) the default store is scoped to the app's
+**own** persistent domain. `NSUserDefaults.StandardUserDefaults` is a *search list* — it resolves a
+key through the argument domain, the app's domain, the global domain and the registration domain —
+so `Contains`/`Get`/`Remove` ask `PersistentDomainForName(bundleId)` rather than the merged list, and
+`Clear` drops that domain. Without this, an ordinary key name (`AutoRecord`, `UseMetric`, `Enabled`)
+that any linked framework registered a default for reads back as **present** having never been
+written, so `store.Get(key, defaultValue)` and `[Bind(Default = ...)]` silently return the foreign
+value instead of the declared default. Keys the app itself wrote are unaffected — the app's own
+domain outranks the global and registration domains.
+
 ## Setup
 
 ```csharp
