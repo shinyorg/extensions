@@ -8,11 +8,11 @@ public interface IAppStore
 
     /// <summary>
     /// Presents the platform's native in-app review prompt without leaving the app
-    /// (iOS/macOS SKStoreReviewController, Windows StoreContext). The OS may silently
+    /// (StoreKit on iOS / Mac Catalyst / macOS, StoreContext on Windows). The OS may silently
     /// suppress the prompt based on its own throttling, so a <c>true</c> result means
     /// the prompt was requested — not that the user saw or completed it.
-    /// Android has no dependency-free in-app review API, so it falls back to
-    /// <see cref="OpenReviewPage"/>.
+    /// Android has no dependency-free in-app review API, and Linux software centres have no
+    /// in-app prompt at all, so both fall back to <see cref="OpenReviewPage"/>.
     /// </summary>
     Task<bool> RequestReview();
 }
@@ -32,14 +32,14 @@ public record AppStoreResult(
 public class AppStoreOptions
 {
     /// <summary>
-    /// iOS numeric App Store ID (e.g. "1234567890"). If null, resolved from the iTunes
-    /// lookup by bundle identifier when calling <see cref="IAppStore.GetCurrent"/>.
-    /// Required to deep-link to the store without first calling GetCurrent.
+    /// Apple numeric App Store ID (e.g. "1234567890"), used by both the iOS App Store and the Mac
+    /// App Store. If null, resolved from the iTunes lookup by bundle identifier when calling
+    /// <see cref="IAppStore.GetCurrent"/>. Required to deep-link to the store without first calling GetCurrent.
     /// </summary>
     public string? AppleAppId { get; set; }
 
     /// <summary>
-    /// iOS bundle identifier. Auto-detected from the running bundle when null.
+    /// Apple bundle identifier. Auto-detected from the running bundle when null.
     /// </summary>
     public string? AppleBundleId { get; set; }
 
@@ -52,6 +52,13 @@ public class AppStoreOptions
     /// Microsoft Store Product ID (e.g. "9NBLGGH4NNS1"). Required on Windows.
     /// </summary>
     public string? WindowsProductId { get; set; }
+
+    /// <summary>
+    /// Linux AppStream component / Flatpak application ID (e.g. "net.shinylib.Sample"). Used by
+    /// Shiny.Extensions.MauiHosting.Linux to query Flatpak or Snap for the published version and to
+    /// deep-link the desktop software centre. Auto-detected from the Flatpak/Snap environment when null.
+    /// </summary>
+    public string? LinuxAppId { get; set; }
 
     /// <summary>
     /// Two-letter region code for iTunes lookups (default "us").

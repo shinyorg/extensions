@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- There is no -linux TFM. A MAUI GTK4 head is a plain net10.0 project, which is also the
+             TFM the base Shiny.Extensions.MauiHosting package serves Linux from. -->
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <Description>Linux (GTK4) app support and software-centre integration for .NET MAUI apps built on the dotnet/maui-labs GTK4 backend</Description>
+        <PackageTags>shiny maui linux gtk gtk4 hosting appsupport appstore flatpak snap</PackageTags>
+        <RootNamespace>Shiny</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <SupportedPlatform Include="linux"/>
+        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials"/>
+        <ProjectReference Include="..\Shiny.Extensions.MauiHosting\Shiny.Extensions.MauiHosting.csproj"/>
+    </ItemGroup>
+
+</Project>

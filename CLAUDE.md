@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 **Shiny.Extensions** — a set of standalone .NET libraries (most ship as source generators) that are independent of the main Shiny client stack. Repo: `https://github.com/shinyorg/extensions`. Packages are AOT/trim-clean where possible (`IsAotCompatible` is on for shipping libraries; source generators target `netstandard2.0`).
 
-- Target framework: `net10.0` (see `Directory.build.props`, `BaseTargetFramework`).
+- Target framework: `net10.0` (see `Directory.Build.props`, `BaseTargetFramework`).
 - Versioning: Nerdbank.GitVersioning via `version.json`. Release branches are named `v{major}` (current branch `v5`, main/PR target `v4`).
 - Packages are produced on `Release` builds (`GeneratePackageOnBuild`).
 

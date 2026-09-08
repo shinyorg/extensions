@@ -47,14 +47,16 @@ public partial class AppSupportPage : ContentPage
         this.appSupport.TimeZoneChanged -= this.OnTimeZoneChanged;
     }
 
+    // The page's own dispatcher, not MainThread - MainThread has no implementation on the macOS
+    // (AppKit) or Linux (GTK4) heads, where MAUI Essentials resolves its platform-neutral asset.
     void OnOrientationChanged(object? sender, DisplayOrientation orientation)
-        => MainThread.BeginInvokeOnMainThread(() => this.RenderOrientation(orientation));
+        => this.Dispatcher.Dispatch(() => this.RenderOrientation(orientation));
 
     void OnCultureChanged(object? sender, CultureInfo culture)
-        => MainThread.BeginInvokeOnMainThread(() => this.RenderCulture(culture));
+        => this.Dispatcher.Dispatch(() => this.RenderCulture(culture));
 
     void OnTimeZoneChanged(object? sender, TimeZoneInfo timeZone)
-        => MainThread.BeginInvokeOnMainThread(() => this.RenderTimeZone(timeZone));
+        => this.Dispatcher.Dispatch(() => this.RenderTimeZone(timeZone));
 
     async void OnLockPortrait(object? sender, EventArgs e)
         => await this.ApplyOrientation(DisplayOrientation.Portrait);

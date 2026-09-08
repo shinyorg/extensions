@@ -1,0 +1,25 @@
+<Project>
+
+    <!-- The shared App/page/resources of the AppSupport sample, imported by the desktop head projects
+         (Sample.Maui.MacOS, Sample.Maui.Linux). Those heads can't ProjectReference Sample.Maui - it only
+         targets the mobile/Windows TFMs - so they link the sources instead and supply their own
+         entry point and MauiProgram. Keep RootNamespace as Sample.Maui in every head so the linked
+         code-behind lines up with the x:Class values in the XAML. -->
+
+    <PropertyGroup>
+        <SharedAppDirectory>$(MSBuildThisFileDirectory)</SharedAppDirectory>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="$(SharedAppDirectory)App.xaml.cs" Link="App.xaml.cs"/>
+        <Compile Include="$(SharedAppDirectory)AppSupportPage.xaml.cs" Link="AppSupportPage.xaml.cs"/>
+
+        <MauiXaml Include="$(SharedAppDirectory)App.xaml" Link="App.xaml"/>
+        <MauiXaml Include="$(SharedAppDirectory)AppSupportPage.xaml" Link="AppSupportPage.xaml"/>
+        <MauiXaml Include="$(SharedAppDirectory)Resources\Styles\Colors.xaml" Link="Resources\Styles\Colors.xaml"/>
+        <MauiXaml Include="$(SharedAppDirectory)Resources\Styles\Styles.xaml" Link="Resources\Styles\Styles.xaml"/>
+
+        <MauiFont Include="$(SharedAppDirectory)Resources\Fonts\*" Link="Resources\Fonts\%(Filename)%(Extension)"/>
+    </ItemGroup>
+
+</Project>

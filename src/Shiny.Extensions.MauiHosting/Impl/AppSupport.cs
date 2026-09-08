@@ -205,7 +205,7 @@ public sealed partial class AppSupport : IAppSupport, IDisposable
 
     // Orientation events are surfaced through MAUI's DeviceDisplay on every native TFM, so
     // the subscription itself is cross-platform. Only the polling fallback diverges.
-#if ANDROID || IOS || MACCATALYST || WINDOWS
+#if ANDROID || IOS || MACCATALYST || MACOS || WINDOWS
     void StartOrientation()
         => DeviceDisplay.Current.MainDisplayInfoChanged += this.OnDisplayInfoChanged;
 
@@ -236,7 +236,7 @@ public sealed partial class AppSupport : IAppSupport, IDisposable
     // Platforms/{Android,Apple,Windows}/AppSupport.cs each provide their own listener.
     // For the bare net10.0 TFM (no platform suffix), no platform file is compiled in, so the
     // polling fallback below kicks in instead.
-#if !(ANDROID || IOS || MACCATALYST || WINDOWS)
+#if !(ANDROID || IOS || MACCATALYST || MACOS || WINDOWS)
     System.Threading.Timer? culturePollTimer;
     System.Threading.Timer? timeZonePollTimer;
 

@@ -1,17 +1,30 @@
-// MAUI Essentials has no macOS (AppKit) implementation, so IAppStore isn't built for the -macos head.
-// UIKit doesn't exist there either. Guarded here rather than in the csproj because Directory.build.targets
-// adds Platforms/Apple/**/*.cs after the project file is evaluated.
-#if !MACOS
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Maui.ApplicationModel;
+#if MACOS
+using AppKit;
+using CoreFoundation;
+#else
 using StoreKit;
 using UIKit;
+#endif
 
 namespace Shiny.Impl;
 
 public sealed partial class AppStore
 {
+#if MACOS
+    // A macOS (AppKit) build is a Mac App Store product, so the lookup has to be scoped to macSoftware
+    // or iTunes answers with the iOS app that shares the bundle identifier.
+    const string LookupEntity = "&entity=macSoftware";
+
+    // macappstore: opens the Mac App Store app; itms-apps: is the iOS/Mac Catalyst scheme.
+    const string StoreUrlFormat = "macappstore://apps.apple.com/app/id{0}";
+#else
+    const string LookupEntity = "";
+    const string StoreUrlFormat = "itms-apps://itunes.apple.com/app/id{0}";
+#endif
+
     async Task<AppStoreResult?> LookupCurrent(CancellationToken cancellationToken)
     {
         // AppInfo.PackageName returns CFBundleIdentifier on Apple platforms.
@@ -19,7 +32,7 @@ public sealed partial class AppStore
         if (string.IsNullOrWhiteSpace(bundleId))
             return null;
 
-        var url = $"https://itunes.apple.com/lookup?bundleId={Uri.EscapeDataString(bundleId)}&country={Uri.EscapeDataString(this.options.CountryCode)}";
+        var url = $"https://itunes.apple.com/lookup?bundleId={Uri.EscapeDataString(bundleId)}&country={Uri.EscapeDataString(this.options.CountryCode)}{LookupEntity}";
         using var response = await this.http.GetAsync(url, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
             return null;
@@ -60,7 +73,7 @@ public sealed partial class AppStore
         if (string.IsNullOrWhiteSpace(appId))
             return Task.FromResult(false);
 
-        return Launcher.Default.TryOpenAsync(new Uri($"itms-apps://itunes.apple.com/app/id{appId}"));
+        return Launcher.Default.TryOpenAsync(new Uri(String.Format(CultureInfo.InvariantCulture, StoreUrlFormat, appId)));
     }
 
     Task<bool> OpenReviewPageCore()
@@ -69,8 +82,51 @@ public sealed partial class AppStore
         if (string.IsNullOrWhiteSpace(appId))
             return Task.FromResult(false);
 
-        return Launcher.Default.TryOpenAsync(new Uri($"itms-apps://itunes.apple.com/app/id{appId}?action=write-review"));
+        var url = String.Format(CultureInfo.InvariantCulture, StoreUrlFormat, appId) + "?action=write-review";
+        return Launcher.Default.TryOpenAsync(new Uri(url));
     }
+
+#if MACOS
+
+    Task<bool> RequestReviewCore()
+    {
+        // AppStore.RequestReview(NSViewController) is the only supported in-app prompt on AppKit -
+        // SKStoreReviewController.RequestReview() was deprecated in macOS 14. There is nothing to
+        // anchor the prompt to before the first window exists, hence the false result.
+        if (!OperatingSystem.IsMacOSVersionAtLeast(14))
+            return Task.FromResult(false);
+
+        var tcs = new TaskCompletionSource<bool>();
+
+        // AppKit is main-thread only. DispatchQueue rather than MAUI's MainThread because MainThread
+        // needs a MAUI Dispatcher, which isn't guaranteed to be running when this is called.
+        DispatchQueue.MainQueue.DispatchAsync(() =>
+        {
+            try
+            {
+                var app = NSApplication.SharedApplication;
+                var controller =
+                    app.KeyWindow?.ContentViewController ??
+                    app.MainWindow?.ContentViewController;
+
+                if (controller == null)
+                {
+                    tcs.SetResult(false);
+                    return;
+                }
+
+                StoreKit.AppStore.RequestReview(controller);
+                tcs.SetResult(true);
+            }
+            catch (Exception)
+            {
+                tcs.SetResult(false);
+            }
+        });
+        return tcs.Task;
+    }
+
+#else
 
     Task<bool> RequestReviewCore()
     {
@@ -112,6 +168,8 @@ public sealed partial class AppStore
         return tcs.Task;
     }
 
+#endif
+
     static bool TryGetVersion(JsonElement element, string propertyName, out Version version)
     {
         version = new Version(0, 0);
@@ -122,4 +180,3 @@ public sealed partial class AppStore
         return !string.IsNullOrWhiteSpace(str) && Version.TryParse(str, out version!);
     }
 }
-#endif

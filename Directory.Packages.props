@@ -13,6 +13,12 @@
         <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)"/>
         <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0"/>
         <PackageVersion Include="Microsoft.Maui.Core" Version="$(MauiVersion)"/>
+        <PackageVersion Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)"/>
+        <!-- dotnet/maui-labs platform backends - experimental/preview, see readme.md -->
+        <PackageVersion Include="Microsoft.Maui.Platforms.MacOS" Version="$(MauiLabsVersion)"/>
+        <PackageVersion Include="Microsoft.Maui.Platforms.MacOS.Essentials" Version="$(MauiLabsVersion)"/>
+        <PackageVersion Include="Microsoft.Maui.Platforms.Linux.Gtk4" Version="$(MauiLabsVersion)"/>
+        <PackageVersion Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" Version="$(MauiLabsVersion)"/>
         <PackageVersion Include="System.Reactive" Version="7.0.0"/>
         <PackageVersion Include="Xamarin.Google.Android.Play.Review" Version="2.0.2.7"/>
         <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" Version="2.10.0.2"/>

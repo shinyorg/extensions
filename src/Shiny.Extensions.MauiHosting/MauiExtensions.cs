@@ -2,6 +2,9 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Maui.Hosting;
 using Shiny.Impl;
+#if MACOS
+using Microsoft.Maui.Platforms.MacOS.Essentials;
+#endif
 
 namespace Shiny;
 
@@ -27,16 +30,13 @@ public static class MauiHostingExtensions
         return builder;
     }
 
-// IAppSupport and IAppStore are built on MAUI Essentials, which has no macOS (AppKit) implementation,
-// so they aren't part of the -macos head. See the Compile Remove in the csproj.
-#if !MACOS
-
     /// <summary>
     /// Registers <see cref="IAppSupport"/> for device info, browser/map launch helpers,
     /// and orientation / culture / time-zone change notifications.
     /// </summary>
     public static MauiAppBuilder AddAppSupport(this MauiAppBuilder builder)
     {
+        builder.EnsureEssentials();
         builder.Services.TryAddSingleton<IAppSupport, AppSupport>();
         return builder;
     }
@@ -54,6 +54,7 @@ public static class MauiHostingExtensions
         if (configure != null)
             builder.Services.Configure(configure);
 
+        builder.EnsureEssentials();
         builder.Services.TryAddSingleton<IAppStore, AppStore>();
         return builder;
     }
@@ -75,5 +76,16 @@ public static class MauiHostingExtensions
         if (windowsProductId != null) opts.WindowsProductId = windowsProductId;
         if (countryCode != null) opts.CountryCode = countryCode;
     });
+
+
+    // The macOS (AppKit) head resolves the platform-neutral Microsoft.Maui.Essentials asset, whose members
+    // all throw NotImplementedInReferenceAssembly. AddMacOSEssentials swaps the AppKit implementations in
+    // behind the static Essentials APIs, so it has to have run before IAppSupport/IAppStore are resolved.
+    // It's TryAdd-based, so an app that already called it isn't affected.
+    static void EnsureEssentials(this MauiAppBuilder builder)
+    {
+#if MACOS
+        builder.AddMacOSEssentials();
 #endif
+    }
 }

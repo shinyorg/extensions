@@ -3,28 +3,27 @@
     <PropertyGroup>
         <TargetFrameworks>$(BaseTargetFramework)</TargetFrameworks>
         <TargetFrameworks>$(TargetFrameworks);$(BaseTargetFramework)-android</TargetFrameworks>
-        <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);$(BaseTargetFramework)-ios;$(BaseTargetFramework)-maccatalyst</TargetFrameworks>
-        <!-- The macOS (AppKit) head exists for IStartupService only - see the Compile Remove below. -->
-        <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);$(BaseTargetFramework)-macos</TargetFrameworks>
-<!--        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);$(BaseTargetFramework)-windows10.0.19041.0</TargetFrameworks>-->
+        <TargetFrameworks Condition="'$(SupportsAppleTargets)' == 'true'">$(TargetFrameworks);$(BaseTargetFramework)-ios;$(BaseTargetFramework)-maccatalyst;$(BaseTargetFramework)-macos</TargetFrameworks>
+        <TargetFrameworks Condition="'$(SupportsWindowsTargets)' == 'true'">$(TargetFrameworks);$(BaseTargetFramework)-windows10.0.19041.0</TargetFrameworks>
 
         <RootNamespace>Shiny</RootNamespace>
     </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Microsoft.Maui.Core"/>
+    <!-- The macOS (AppKit) head is the dotnet/maui-labs backend, not Mac Catalyst. Microsoft.Maui.Essentials
+         resolves its platform-neutral net10.0 asset there (every member throws NotImplementedInReferenceAssembly),
+         so IAppSupport and IAppStore only work once the AppKit Essentials implementations are swapped in.
+         AddAppSupport/AddAppStore call AddMacOSEssentials for you - hence the hard reference here. -->
+    <PropertyGroup Condition="$(TargetFramework.Contains('-macos'))">
+        <!-- Don't force the SDK default (macOS 26) onto consumers - the AppKit backend targets 14.0. -->
+        <SupportedOSPlatformVersion>14.0</SupportedOSPlatformVersion>
+    </PropertyGroup>
+
+    <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
+        <PackageReference Include="Microsoft.Maui.Platforms.MacOS.Essentials"/>
     </ItemGroup>
 
-    <!-- MAUI has no macOS (AppKit) asset - Microsoft.Maui.Core resolves its platform-neutral net10.0
-         reference assembly there, whose members all throw NotImplementedInReferenceAssembly. IAppSupport
-         and IAppStore are built on those APIs, so they're left out of this head rather than shipped as
-         surface that throws. Platforms/Apple/AppSupport.cs and AppStore.cs guard themselves with #if
-         !MACOS because Directory.build.targets includes them after this project file is evaluated. -->
-    <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
-        <Compile Remove="IAppSupport.cs"/>
-        <Compile Remove="IAppStore.cs"/>
-        <Compile Remove="Impl\AppSupport.cs"/>
-        <Compile Remove="Impl\AppStore.cs"/>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Maui.Core"/>
     </ItemGroup>
 
     <ItemGroup Condition="$(TargetFramework.Contains('-android'))">

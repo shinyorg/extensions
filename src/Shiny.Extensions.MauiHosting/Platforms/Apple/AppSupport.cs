@@ -1,7 +1,3 @@
-// MAUI Essentials has no macOS (AppKit) implementation, so IAppSupport isn't built for the -macos head.
-// Guarded here rather than in the csproj because Directory.build.targets adds Platforms/Apple/**/*.cs
-// after the project file is evaluated, so a Compile Remove there would come too early to take effect.
-#if !MACOS
 using Foundation;
 using Microsoft.Maui.Devices;
 
@@ -48,9 +44,9 @@ public sealed partial class AppSupport
     }
 
     // iOS 16+ supports programmatic rotation via UIWindowScene.RequestGeometryUpdate. On iOS 15
-    // and earlier there is no supported public API. macCatalyst windows don't rotate so it's a no-op.
-    // Even on iOS 16+, the active view controller must permit the requested mask via its
-    // supportedInterfaceOrientations override or the request is silently dropped.
+    // and earlier there is no supported public API. macCatalyst and macOS (AppKit) windows don't
+    // rotate so it's a no-op there. Even on iOS 16+, the active view controller must permit the
+    // requested mask via its supportedInterfaceOrientations override or the request is silently dropped.
     Task<bool> ApplyOrientation(DisplayOrientation orientation)
     {
 #if IOS
@@ -84,4 +80,3 @@ public sealed partial class AppSupport
 #endif
     }
 }
-#endif

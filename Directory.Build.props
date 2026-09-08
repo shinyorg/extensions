@@ -1,0 +1,42 @@
+<Project>
+    <PropertyGroup>
+        <BaseTargetFramework>net10.0</BaseTargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PackageReadmeFile>readme.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/shinyorg/extensions</RepositoryUrl>
+        <PackageProjectUrl>https://shinylib.net</PackageProjectUrl>
+
+        <MauiVersion>10.0.41</MauiVersion>
+        <!-- dotnet/maui-labs backends (macOS AppKit, Linux GTK4). Experimental preview packages. -->
+        <MauiLabsVersion>0.1.0-preview.12.26421.1</MauiLabsVersion>
+    </PropertyGroup>
+
+    <!-- Which platform TFMs the build host can actually produce, so every project gates its target
+         framework list the same way instead of each inventing its own condition.
+
+         The Apple workloads (ios/maccatalyst/macos) ship for macOS and Windows only - there is no Linux
+         build of them - and the Windows SDK targets only exist on Windows. Android builds on all three.
+         Both can be overridden from the command line to check what another host would resolve, e.g.
+         `dotnet msbuild -getProperty:TargetFrameworks -p:SupportsAppleTargets=false`. -->
+    <PropertyGroup>
+        <SupportsAppleTargets>true</SupportsAppleTargets>
+        <SupportsAppleTargets Condition="$([MSBuild]::IsOSPlatform('linux'))">false</SupportsAppleTargets>
+
+        <SupportsWindowsTargets>false</SupportsWindowsTargets>
+        <SupportsWindowsTargets Condition="$([MSBuild]::IsOSPlatform('windows'))">true</SupportsWindowsTargets>
+    </PropertyGroup>
+
+    <!-- Enable trim/AOT analyzers on shipping library projects so DI registrations and other
+         APIs surface warnings at build time. Source generators (netstandard2.0) are excluded. -->
+    <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0' AND !$(MSBuildProjectName.Contains('SourceGenerators')) AND !$(MSBuildProjectName.Contains('.Tests'))">
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    </PropertyGroup>
+</Project>

@@ -9,7 +9,8 @@ public sealed partial class StartupService
 {
     // SMAppService is macOS 13 / Mac Catalyst 16 and up. Earlier versions only had the deprecated
     // SMLoginItemSetEnabled helper-bundle route, which needs a separate signed helper bundle.
-    // Nothing here touches MAUI Essentials - it has no macOS (AppKit) implementation to fall back on.
+    // Nothing here touches MAUI Essentials, so IStartupService works on the AppKit head whether or
+    // not the app wired up the macOS Essentials implementations.
 #if MACOS
     [SupportedOSPlatformGuard("macos13.0")]
     public bool IsSupported => OperatingSystem.IsMacOSVersionAtLeast(13);

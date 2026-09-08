@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- The AppKit head from dotnet/maui-labs - a real macOS app, not Mac Catalyst. -->
+        <TargetFramework>$(BaseTargetFramework)-macos</TargetFramework>
+        <RootNamespace>Sample.Maui</RootNamespace>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <!-- There is no Linux build of the macOS workload, and a project still has to resolve to a valid TFM
+         for the solution to load. So on a Linux host this head degrades to an empty net10.0 library:
+         `dotnet build Extensions.slnx` keeps working there, and the real head is untouched everywhere else. -->
+    <PropertyGroup Condition="'$(SupportsAppleTargets)' != 'true'">
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+        <NoWarn>$(NoWarn);CS2008</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(SupportsAppleTargets)' == 'true'">
+        <OutputType>Exe</OutputType>
+        <UseMaui>true</UseMaui>
+        <SingleProject>true</SingleProject>
+        <SupportedOSPlatformVersion>14.0</SupportedOSPlatformVersion>
+
+        <ApplicationTitle>Shiny AppSupport Sample</ApplicationTitle>
+        <ApplicationId>org.shiny.appsupport.sample</ApplicationId>
+        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+        <ApplicationVersion>1</ApplicationVersion>
+    </PropertyGroup>
+
+    <Import Project="..\Sample.Maui\Sample.Maui.SharedApp.props" Condition="'$(SupportsAppleTargets)' == 'true'"/>
+
+    <ItemGroup Condition="'$(SupportsAppleTargets)' == 'true'">
+        <PackageReference Include="Microsoft.Maui.Controls"/>
+        <PackageReference Include="Microsoft.Maui.Platforms.MacOS"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug"/>
+
+        <!-- Microsoft.Maui.Platforms.MacOS.Essentials comes in transitively with the -macos head of
+             the hosting package, which needs it for IAppSupport/IAppStore. -->
+        <ProjectReference Include="..\..\src\Shiny.Extensions.MauiHosting\Shiny.Extensions.MauiHosting.csproj"/>
+    </ItemGroup>
+
+</Project>

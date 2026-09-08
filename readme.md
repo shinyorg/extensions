@@ -234,10 +234,11 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 
 ## MAUI Hosting Extensions
 * Module-based MAUI app configuration with `IMauiModule`
-* Static `Host.Services` for accessing the service provider anywhere
-* `IAppSupport` — device info (manufacturer, model, platform, idiom, OS version), browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/Windows, polling fallback elsewhere)
-* `IAppStore` — cross-platform store version lookups + deep links for Apple App Store (iTunes Search API), Google Play (HTML scrape), and Microsoft Store (DisplayCatalog API)
+* Static `ShinyHost.Services` for accessing the service provider anywhere
+* `IAppSupport` — device info (manufacturer, model, platform, idiom, OS version), browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/macOS/Windows, polling fallback elsewhere)
+* `IAppStore` — cross-platform store version lookups + deep links for the Apple App Store and Mac App Store (iTunes Search API), Google Play (HTML scrape), Microsoft Store (DisplayCatalog API), and Flatpak/Snap on Linux
 * `IStartupService` — install/remove the app from the desktop OS "launch at login" list (Windows `Run` key, macOS `SMAppService` login items on both Mac Catalyst and AppKit, Linux XDG autostart)
+* Desktop backends from [dotnet/maui-labs](https://github.com/dotnet/maui-labs): macOS AppKit (`net10.0-macos`) is served by this package, Linux GTK4 by the companion `Shiny.Extensions.MauiHosting.Linux` package
 * Opt-in registration: each capability is its own extension method so apps only pay for what they use
 
 ### Setup
@@ -277,7 +278,7 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 
    return builder.Build();
    ```
-4. Access services anywhere via `Host.Services`
+4. Access services anywhere via `ShinyHost.Services`
 
 #### IAppSupport
 ```csharp
@@ -346,15 +347,15 @@ builder.AddStartupService(opts =>
 });
 ```
 
-A macOS (AppKit) app has no `MauiAppBuilder`, so register against the service collection instead — the
+A plain AppKit app with no `MauiAppBuilder` can register against the service collection instead — the
 package ships a `net10.0-macos` asset for exactly this:
 
 ```csharp
 services.AddStartupService(opts => opts.Identifier = "MyApp");
 ```
 
-> The `net10.0-macos` asset carries `IStartupService` only. `IAppSupport` and `IAppStore` are built on MAUI
-> Essentials, which has no AppKit implementation, so they are not compiled into that head.
+> `IStartupService` doesn't touch MAUI Essentials, so it works on the AppKit head with no extra setup.
+> `IAppSupport` and `IAppStore` do — see the desktop backend section below.
 
 #### IAppStore
 ```csharp
@@ -370,6 +371,88 @@ public class UpdateChecker(IAppStore store)
     public Task Review() => store.OpenReviewPage();
 }
 ```
+
+| Platform | Source of the published version | Deep link |
+|----------|--------------------------------|-----------|
+| iOS / Mac Catalyst | iTunes Search API by bundle ID | `itms-apps://` |
+| macOS (AppKit) | iTunes Search API by bundle ID, scoped to `entity=macSoftware` | `macappstore://` |
+| Android | Play Store listing scrape | `market://` |
+| Windows | Microsoft Store DisplayCatalog API | `ms-windows-store://` |
+| Linux (`Shiny.Extensions.MauiHosting.Linux`) | `flatpak remote-info` against the remote the app was installed from, or `snap info` for the tracked channel | `appstream://` into GNOME Software / Plasma Discover / Snap Store |
+
+`RequestReview` shows the OS's own in-app prompt where one exists (StoreKit on iOS / Mac Catalyst / macOS,
+`StoreContext` on Windows). Android and Linux have no dependency-free in-app prompt, so both fall back to
+`OpenReviewPage`.
+
+### Desktop backends (macOS AppKit + Linux GTK4)
+
+.NET MAUI has no first-party macOS (AppKit) or Linux head. [dotnet/maui-labs](https://github.com/dotnet/maui-labs)
+ships both as experimental preview packages, and this library supports them.
+
+#### macOS (AppKit)
+
+The `net10.0-macos` asset of `Shiny.Extensions.MauiHosting` carries the full surface — `IAppSupport`,
+`IAppStore`, and `IStartupService`. On that head MAUI Essentials resolves its platform-neutral asset,
+where every member throws `NotImplementedInReferenceAssembly`, so the package depends on
+`Microsoft.Maui.Platforms.MacOS.Essentials` and `AddAppSupport()`/`AddAppStore()` call `AddMacOSEssentials()`
+for you.
+
+```csharp
+using Microsoft.Maui.Platforms.MacOS.Hosting;
+using Shiny;
+
+var builder = MauiApp.CreateBuilder();
+builder
+    .UseMauiAppMacOS<App>()
+    .AddInfrastructureModules(new MyMauiModule())
+    .AddAppSupport()      // wires the AppKit Essentials implementations in
+    .AddAppStore(opts => opts.AppleAppId = "1234567890")
+    .AddStartupService();
+
+return builder.Build();
+```
+
+Culture and time-zone changes come through `NSNotificationCenter`, and orientation through
+`DeviceDisplay.MainDisplayInfoChanged` (`NSApplication.DidChangeScreenParametersNotification`).
+`SetOrientation`/`ResetOrientation` return false — AppKit windows don't rotate.
+
+#### Linux (GTK4)
+
+Linux has no `-linux` TFM, so a GTK4 head is a plain `net10.0` project. The base package's `AddAppSupport()`
+would resolve that same throwing Essentials asset, and `AddLinuxGtk4Essentials()` only redirects five of the
+static APIs — so Linux gets its own package, `Shiny.Extensions.MauiHosting.Linux`, whose implementations
+resolve the Essentials *interfaces* out of the container instead.
+
+```csharp
+using Microsoft.Maui.Platforms.Linux.Gtk4.Hosting;
+using Shiny;
+
+var builder = MauiApp.CreateBuilder();
+builder
+    .UseMauiAppLinuxGtk4<App>()
+    .AddInfrastructureModules(new MyMauiModule())
+    .AddLinuxAppSupport()                            // IAppSupport over the GTK4 Essentials services
+    .AddLinuxAppStore("org.example.MyApp")           // IAppStore over Flatpak / Snap
+    .AddStartupService();                            // XDG autostart, from the base package
+
+return builder.Build();
+```
+
+`AddLinuxAppSupport()`/`AddLinuxAppStore()` are named apart from the base `AddAppSupport()`/`AddAppStore()`
+on purpose — both packages put their extensions on `MauiAppBuilder` in the `Shiny` namespace, and only one
+of each pair works on Linux.
+
+| Capability | Linux behaviour |
+|------------|-----------------|
+| Device info / browser / map | The GTK4 Essentials services (`IAppInfo`, `IDeviceInfo`, `IBrowser` and `IMap` over `xdg-open`) |
+| Time zone changes | inotify on `/etc/localtime`, which `systemd-timedated` replaces on a zone change |
+| Culture changes | Polled. A Linux locale switch only takes effect for the *next* login, so a running process never sees one from the OS |
+| Orientation | Reported from the GDK monitor geometry; `SetOrientation`/`ResetOrientation` return false |
+| App store | `flatpak remote-info` / `snap info`. Set `AppStoreOptions.LinuxAppId` when the app isn't running from a Flatpak or Snap sandbox — there's nothing to auto-detect from |
+
+> Both backends are `0.1.0-preview` packages from dotnet/maui-labs and are not covered by the .NET MAUI
+> support policy. `samples/Sample.Maui.MacOS` and `samples/Sample.Maui.Linux` are runnable heads of the
+> shared sample app for each.
 
 ## Blazor WebAssembly Hosting Extensions
 * `IAppSupport` for Blazor WebAssembly — app version, browser user-agent (raw string + best-effort parsed browser `Version`), screen and viewport dimensions, plus live culture / time-zone change events
@@ -420,5 +503,6 @@ public class UpdateChecker(IAppStore store)
 | `Shiny.Extensions.Stores` | Cross-platform key/value store abstraction |
 | `Shiny.Extensions.Stores.Web` | Blazor WebAssembly localStorage/sessionStorage |
 | `Shiny.Extensions.WebHosting` | ASP.NET modular web hosting with `IWebModule` |
-| `Shiny.Extensions.MauiHosting` | MAUI modular hosting with `IMauiModule` and platform lifecycle hooks |
+| `Shiny.Extensions.MauiHosting` | MAUI modular hosting with `IMauiModule` and platform lifecycle hooks (includes the macOS AppKit head) |
+| `Shiny.Extensions.MauiHosting.Linux` | `IAppSupport` and Flatpak/Snap `IAppStore` for the MAUI Linux GTK4 backend |
 | `Shiny.Extensions.BlazorHosting` | Blazor WebAssembly `IAppSupport` — browser/device info and culture/time-zone change events |

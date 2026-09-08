@@ -23,7 +23,7 @@ public sealed partial class AppStore : IAppStore
 
     // Non-platform fallback. Platform partials in Platforms/{Apple,Android,Windows}/AppStore.cs
     // supply the real implementations on their respective TFMs.
-#if !(IOS || MACCATALYST || ANDROID || WINDOWS)
+#if !(IOS || MACCATALYST || MACOS || ANDROID || WINDOWS)
     Task<AppStoreResult?> LookupCurrent(CancellationToken cancellationToken)
         => Task.FromResult<AppStoreResult?>(null);
 

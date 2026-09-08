@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- There is no -linux TFM, so the GTK4 head is a plain net10.0 executable. The Gtk4 package's
+             build assets bring in the MAUI resource item groups and the XAML pipeline. -->
+        <TargetFramework>$(BaseTargetFramework)</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Sample.Maui</RootNamespace>
+        <IsPackable>false</IsPackable>
+
+        <ApplicationTitle>Shiny AppSupport Sample</ApplicationTitle>
+        <ApplicationId>org.shiny.appsupport.sample</ApplicationId>
+        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+        <ApplicationVersion>1</ApplicationVersion>
+    </PropertyGroup>
+
+    <Import Project="..\Sample.Maui\Sample.Maui.SharedApp.props"/>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Maui.Controls"/>
+        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Brings in Microsoft.Maui.Platforms.Linux.Gtk4.Essentials, which is where
+             LinuxAppSupport gets its IAppInfo/IDeviceInfo/IBrowser/IMap from. -->
+        <ProjectReference Include="..\..\src\Shiny.Extensions.MauiHosting.Linux\Shiny.Extensions.MauiHosting.Linux.csproj"/>
+    </ItemGroup>
+
+</Project>
