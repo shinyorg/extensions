@@ -1,3 +1,7 @@
+// MAUI Essentials has no macOS (AppKit) implementation, so IAppSupport isn't built for the -macos head.
+// Guarded here rather than in the csproj because Directory.build.targets adds Platforms/Apple/**/*.cs
+// after the project file is evaluated, so a Compile Remove there would come too early to take effect.
+#if !MACOS
 using Foundation;
 using Microsoft.Maui.Devices;
 
@@ -80,3 +84,4 @@ public sealed partial class AppSupport
 #endif
     }
 }
+#endif

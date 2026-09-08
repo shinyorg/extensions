@@ -26,6 +26,8 @@ triggers:
   - launch at login
   - login item
   - autostart
+  - AppKit
+  - net10.0-macos
 ---
 
 # Shiny MAUI Hosting Skill
@@ -304,9 +306,28 @@ public class StartupServiceOptions
 |----------|-----------|-------|
 | Windows (unpackaged, `WindowsPackageType=None`) | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` | Honours `ExecutablePath`/`Arguments`. `StartupApproved\Run` is read so a user switching the entry off in Task Manager surfaces as `DisabledByUser`. `OpenSettings` launches `ms-settings:startupapps` |
 | Windows (MSIX packaged) | Not supported | MSIX virtualizes `HKCU` writes into a per-package hive, so a `Run` entry never reaches the shell. Packaged apps need a `windows.startupTask` manifest declaration through WinRT, which needs a `-windows` TFM (this package doesn't currently build one). `IsSupported` is false |
-| macOS 13+ (Mac Catalyst) | `SMAppService.MainApp` | Registers the running app bundle — `Identifier`, `ExecutablePath` and `Arguments` are all ignored. The first `Register` commonly returns `RequiresApproval` until the user approves it under System Settings > General > Login Items (`OpenSettings` opens exactly that pane) |
+| macOS 13+ (Mac Catalyst and AppKit / `net10.0-macos`) | `SMAppService.MainApp` | Registers the running app bundle — `Identifier`, `ExecutablePath` and `Arguments` are all ignored. The first `Register` commonly returns `RequiresApproval` until the user approves it under System Settings > General > Login Items (`OpenSettings` opens exactly that pane). Uses `DispatchQueue.MainQueue` rather than MAUI's `MainThread`, so it works on the AppKit head |
 | Linux (bare `net10.0` build) | `~/.config/autostart/{Identifier}.desktop` (honours `XDG_CONFIG_HOME`) | Honours `ExecutablePath`/`Arguments`. `Hidden=true` or `X-GNOME-Autostart-enabled=false` surfaces as `DisabledByUser`. `OpenSettings` returns false — there is no cross-desktop settings page |
 | iOS / Android / macOS 12 and earlier | Not supported | `IsSupported` is false; every call returns `NotSupported` |
+
+### Registering on macOS (AppKit)
+
+`Shiny.Extensions.MauiHosting` multi-targets `net10.0-macos` for this service. An AppKit app has no
+`MauiAppBuilder`, so register against the service collection:
+
+```csharp
+services.AddStartupService(opts => opts.Identifier = "MyApp");
+```
+
+Both overloads live in `Shiny.StartupServiceExtensions` — the `MauiAppBuilder` one just forwards to the
+`IServiceCollection` one.
+
+:::caution
+The `net10.0-macos` asset ships `IStartupService` only. `IAppSupport` and `IAppStore` are built on MAUI
+Essentials, which has no AppKit implementation (MAUI publishes no `net10.0-macos` asset at all — the
+platform-neutral reference assembly throws `NotImplementedInReferenceAssembly`), so they are compiled out
+of that head. Don't suggest `AddAppSupport`/`AddAppStore` for a `net10.0-macos` project.
+:::
 
 ### Usage
 
@@ -357,9 +378,15 @@ public static class MauiHostingExtensions
 {
     public static MauiAppBuilder AddInfrastructureModules(this MauiAppBuilder builder, params IEnumerable<IMauiModule> modules);
     public static MauiAppBuilder AddAppSupport(this MauiAppBuilder builder);
-    public static MauiAppBuilder AddStartupService(this MauiAppBuilder builder, Action<StartupServiceOptions>? configure = null);
+
     public static MauiAppBuilder AddAppStore(this MauiAppBuilder builder, Action<AppStoreOptions>? configure = null);
     public static MauiAppBuilder AddAppStore(this MauiAppBuilder builder, string? appleAppId = null, string? androidPackageName = null, string? windowsProductId = null, string? countryCode = null);
+}
+
+public static class StartupServiceExtensions
+{
+    public static IServiceCollection AddStartupService(this IServiceCollection services, Action<StartupServiceOptions>? configure = null);
+    public static MauiAppBuilder AddStartupService(this MauiAppBuilder builder, Action<StartupServiceOptions>? configure = null);
 }
 
 public class Host : IMauiInitializeService

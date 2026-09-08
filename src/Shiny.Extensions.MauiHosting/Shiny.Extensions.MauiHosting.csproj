@@ -4,6 +4,8 @@
         <TargetFrameworks>$(BaseTargetFramework)</TargetFrameworks>
         <TargetFrameworks>$(TargetFrameworks);$(BaseTargetFramework)-android</TargetFrameworks>
         <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);$(BaseTargetFramework)-ios;$(BaseTargetFramework)-maccatalyst</TargetFrameworks>
+        <!-- The macOS (AppKit) head exists for IStartupService only - see the Compile Remove below. -->
+        <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);$(BaseTargetFramework)-macos</TargetFrameworks>
 <!--        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);$(BaseTargetFramework)-windows10.0.19041.0</TargetFrameworks>-->
 
         <RootNamespace>Shiny</RootNamespace>
@@ -11,6 +13,18 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Maui.Core"/>
+    </ItemGroup>
+
+    <!-- MAUI has no macOS (AppKit) asset - Microsoft.Maui.Core resolves its platform-neutral net10.0
+         reference assembly there, whose members all throw NotImplementedInReferenceAssembly. IAppSupport
+         and IAppStore are built on those APIs, so they're left out of this head rather than shipped as
+         surface that throws. Platforms/Apple/AppSupport.cs and AppStore.cs guard themselves with #if
+         !MACOS because Directory.build.targets includes them after this project file is evaluated. -->
+    <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
+        <Compile Remove="IAppSupport.cs"/>
+        <Compile Remove="IAppStore.cs"/>
+        <Compile Remove="Impl\AppSupport.cs"/>
+        <Compile Remove="Impl\AppStore.cs"/>
     </ItemGroup>
 
     <ItemGroup Condition="$(TargetFramework.Contains('-android'))">

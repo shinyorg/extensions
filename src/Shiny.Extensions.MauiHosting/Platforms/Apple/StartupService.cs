@@ -1,6 +1,6 @@
-#if MACCATALYST
+#if MACCATALYST || MACOS
 using System.Runtime.Versioning;
-using Microsoft.Maui.ApplicationModel;
+using CoreFoundation;
 using ServiceManagement;
 
 namespace Shiny.Impl;
@@ -8,9 +8,15 @@ namespace Shiny.Impl;
 public sealed partial class StartupService
 {
     // SMAppService is macOS 13 / Mac Catalyst 16 and up. Earlier versions only had the deprecated
-    // SMLoginItemSetEnabled helper-bundle route, which a Catalyst app can't use anyway.
+    // SMLoginItemSetEnabled helper-bundle route, which needs a separate signed helper bundle.
+    // Nothing here touches MAUI Essentials - it has no macOS (AppKit) implementation to fall back on.
+#if MACOS
+    [SupportedOSPlatformGuard("macos13.0")]
+    public bool IsSupported => OperatingSystem.IsMacOSVersionAtLeast(13);
+#else
     [SupportedOSPlatformGuard("maccatalyst16.0")]
     public bool IsSupported => OperatingSystem.IsMacCatalystVersionAtLeast(16);
+#endif
 
     Task<StartupServiceState> GetStateCore(CancellationToken cancellationToken)
         => Task.FromResult(
@@ -62,8 +68,9 @@ public sealed partial class StartupService
         if (!this.IsSupported)
             return Task.FromResult(false);
 
-        // Drives a UI transition into System Settings, so it has to run on the main thread.
-        MainThread.BeginInvokeOnMainThread(SMAppService.OpenSystemSettingsLoginItems);
+        // Drives a UI transition into System Settings, so it has to run on the main thread. DispatchQueue
+        // is used rather than MAUI's MainThread so this works on the AppKit head too.
+        DispatchQueue.MainQueue.DispatchAsync(SMAppService.OpenSystemSettingsLoginItems);
         return Task.FromResult(true);
     }
 

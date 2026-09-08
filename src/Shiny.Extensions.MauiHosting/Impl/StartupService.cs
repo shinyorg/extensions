@@ -1,6 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.Options;
-#if !(ANDROID || IOS || MACCATALYST)
+#if !(ANDROID || IOS || MACCATALYST || MACOS)
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -99,11 +99,11 @@ public sealed partial class StartupService : IStartupService
 
     Task<bool> OpenSettingsCore() => Task.FromResult(false);
 
-#elif !MACCATALYST
+#elif !(MACCATALYST || MACOS)
 
     // Windows and Linux both land on the bare net10.0 build - MAUI's Windows head resolves the net10.0
-    // asset today, and Linux has no MAUI platform TFM at all. macOS is handled by SMAppService over in
-    // Platforms/Apple. Nothing here touches MAUI Essentials, which throws on this TFM.
+    // asset today, and Linux has no platform TFM at all. macOS (Catalyst and AppKit alike) is handled by
+    // SMAppService over in Platforms/Apple. Nothing here touches MAUI Essentials, which throws on this TFM.
 
     const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     const string StartupApprovedKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";

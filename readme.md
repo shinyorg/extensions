@@ -237,7 +237,7 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 * Static `Host.Services` for accessing the service provider anywhere
 * `IAppSupport` — device info (manufacturer, model, platform, idiom, OS version), browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/Windows, polling fallback elsewhere)
 * `IAppStore` — cross-platform store version lookups + deep links for Apple App Store (iTunes Search API), Google Play (HTML scrape), and Microsoft Store (DisplayCatalog API)
-* `IStartupService` — install/remove the app from the desktop OS "launch at login" list (Windows `Run` key, macOS `SMAppService` login items, Linux XDG autostart)
+* `IStartupService` — install/remove the app from the desktop OS "launch at login" list (Windows `Run` key, macOS `SMAppService` login items on both Mac Catalyst and AppKit, Linux XDG autostart)
 * Opt-in registration: each capability is its own extension method so apps only pay for what they use
 
 ### Setup
@@ -332,7 +332,7 @@ public class StartupToggle(IStartupService startup)
 | Platform | Mechanism | Notes |
 |----------|-----------|-------|
 | Windows (unpackaged, `WindowsPackageType=None`) | `HKCU\…\CurrentVersion\Run` | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry was switched off in Task Manager. `OpenSettings` opens `ms-settings:startupapps` |
-| macOS 13+ (Mac Catalyst) | `SMAppService.MainApp` | Registers the running app bundle. First registration commonly returns `RequiresApproval` until the user approves it in System Settings > General > Login Items, which `OpenSettings` opens |
+| macOS 13+ (Mac Catalyst **and** AppKit / `net10.0-macos`) | `SMAppService.MainApp` | Registers the running app bundle. First registration commonly returns `RequiresApproval` until the user approves it in System Settings > General > Login Items, which `OpenSettings` opens |
 | Linux | `~/.config/autostart/{Identifier}.desktop` | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry has `Hidden=true` / `X-GNOME-Autostart-enabled=false` |
 | Windows (MSIX packaged) | Not supported | MSIX virtualizes `HKCU` writes, so a `Run` entry would be invisible to the shell — packaged apps need a `windows.startupTask` manifest declaration driven through WinRT. `IsSupported` reports false |
 | iOS / Android / macOS 12 and earlier | Not supported | `IsSupported` is false and every call returns `NotSupported` |
@@ -345,6 +345,16 @@ builder.AddStartupService(opts =>
     opts.Arguments.Add("--autostart");         // Windows + Linux (macOS can't pass arguments)
 });
 ```
+
+A macOS (AppKit) app has no `MauiAppBuilder`, so register against the service collection instead — the
+package ships a `net10.0-macos` asset for exactly this:
+
+```csharp
+services.AddStartupService(opts => opts.Identifier = "MyApp");
+```
+
+> The `net10.0-macos` asset carries `IStartupService` only. `IAppSupport` and `IAppStore` are built on MAUI
+> Essentials, which has no AppKit implementation, so they are not compiled into that head.
 
 #### IAppStore
 ```csharp

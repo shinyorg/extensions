@@ -27,6 +27,10 @@ public static class MauiHostingExtensions
         return builder;
     }
 
+// IAppSupport and IAppStore are built on MAUI Essentials, which has no macOS (AppKit) implementation,
+// so they aren't part of the -macos head. See the Compile Remove in the csproj.
+#if !MACOS
+
     /// <summary>
     /// Registers <see cref="IAppSupport"/> for device info, browser/map launch helpers,
     /// and orientation / culture / time-zone change notifications.
@@ -34,24 +38,6 @@ public static class MauiHostingExtensions
     public static MauiAppBuilder AddAppSupport(this MauiAppBuilder builder)
     {
         builder.Services.TryAddSingleton<IAppSupport, AppSupport>();
-        return builder;
-    }
-
-    /// <summary>
-    /// Registers <see cref="IStartupService"/> for installing the app into the desktop operating system's
-    /// startup (launch at login) list on Windows, macOS, and Linux.
-    /// </summary>
-    /// <param name="builder"></param>
-    /// <param name="configure">Optional inline configuration of <see cref="StartupServiceOptions"/>.</param>
-    public static MauiAppBuilder AddStartupService(
-        this MauiAppBuilder builder,
-        Action<StartupServiceOptions>? configure = null
-    )
-    {
-        if (configure != null)
-            builder.Services.Configure(configure);
-
-        builder.Services.TryAddSingleton<IStartupService, StartupService>();
         return builder;
     }
 
@@ -89,4 +75,5 @@ public static class MauiHostingExtensions
         if (windowsProductId != null) opts.WindowsProductId = windowsProductId;
         if (countryCode != null) opts.CountryCode = countryCode;
     });
+#endif
 }

@@ -1,3 +1,7 @@
+// MAUI Essentials has no macOS (AppKit) implementation, so IAppStore isn't built for the -macos head.
+// UIKit doesn't exist there either. Guarded here rather than in the csproj because Directory.build.targets
+// adds Platforms/Apple/**/*.cs after the project file is evaluated.
+#if !MACOS
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Maui.ApplicationModel;
@@ -118,3 +122,4 @@ public sealed partial class AppStore
         return !string.IsNullOrWhiteSpace(str) && Version.TryParse(str, out version!);
     }
 }
+#endif
