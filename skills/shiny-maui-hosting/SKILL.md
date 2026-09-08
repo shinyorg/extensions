@@ -1,6 +1,6 @@
 ---
 name: shiny-maui-hosting
-description: Generate and configure Shiny MAUI Hosting for .NET - modular MAUI app configuration with IMauiModule, static Host.Services access, IAppSupport (device info + orientation/culture/timezone change events + programmatic orientation lock), and IAppStore (cross-platform store version lookups and deep links for Apple, Google, Microsoft stores)
+description: Generate and configure Shiny MAUI Hosting for .NET - modular MAUI app configuration with IMauiModule, static Host.Services access, IAppSupport (device info + orientation/culture/timezone change events + programmatic orientation lock), IAppStore (cross-platform store version lookups and deep links for Apple, Google, Microsoft stores), and IStartupService (install the app into the desktop OS launch-at-login list on Windows, macOS, and Linux)
 auto_invoke: true
 triggers:
   - IMauiModule
@@ -18,11 +18,19 @@ triggers:
   - TimeZoneChanged
   - SetOrientation
   - ResetOrientation
+  - IStartupService
+  - AddStartupService
+  - StartupServiceOptions
+  - StartupServiceState
+  - run at startup
+  - launch at login
+  - login item
+  - autostart
 ---
 
 # Shiny MAUI Hosting Skill
 
-You are an expert in Shiny Extensions MAUI Hosting, a .NET library providing modular MAUI app configuration via `IMauiModule`, a static service provider accessor, an `IAppSupport` service for device info and orientation/culture/timezone change detection, and an `IAppStore` service for cross-platform store info and deep links.
+You are an expert in Shiny Extensions MAUI Hosting, a .NET library providing modular MAUI app configuration via `IMauiModule`, a static service provider accessor, an `IAppSupport` service for device info and orientation/culture/timezone change detection, an `IAppStore` service for cross-platform store info and deep links, and an `IStartupService` for desktop launch-at-login registration.
 
 Platform lifecycle hooks (`IIosLifecycle.*`, `IAndroidLifecycle.*`, `IMacLifecycle.*`) are wired automatically by `UseShiny()` from `Shiny.Hosting.Maui` — they are not handled by this library.
 
@@ -34,6 +42,7 @@ Invoke this skill when the user wants to:
 - React to orientation, culture, or time-zone changes via `IAppSupport`
 - Programmatically lock or reset device orientation
 - Check store version / deep-link to store / launch a review page via `IAppStore`
+- Install or remove the app from the desktop OS startup (launch at login) list via `IStartupService`
 
 ## Library Overview
 
@@ -54,6 +63,7 @@ builder
     .UseMauiApp<App>()
     .AddInfrastructureModules(new MyModule(), new AnotherModule())
     .AddAppSupport()                              // IAppSupport
+    .AddStartupService()                          // IStartupService + IOptions<StartupServiceOptions>
     .AddAppStore(opts =>                          // IAppStore + IOptions<AppStoreOptions>
     {
         opts.AppleAppId = "1234567890";
@@ -255,6 +265,87 @@ public class UpdateChecker(IAppStore store)
 Android version detection relies on scraping the Play Store HTML. Google changes the page structure periodically — if `GetCurrent` returns `null` on Android even when the app exists, the regex likely needs updating.
 :::
 
+## IStartupService
+
+`IStartupService` installs the running app into the desktop operating system's startup ("launch at login") list. It is safe to call from cross-platform code — mobile reports `NotSupported` rather than throwing.
+
+```csharp
+public interface IStartupService
+{
+    bool IsSupported { get; }
+    Task<StartupServiceState> GetState(CancellationToken cancellationToken = default);
+    Task<StartupServiceState> Register(CancellationToken cancellationToken = default);
+    Task<StartupServiceState> Unregister(CancellationToken cancellationToken = default);
+    Task<bool> OpenSettings();          // OS startup-apps / login-items UI
+}
+
+public enum StartupServiceState
+{
+    NotSupported,
+    NotRegistered,
+    Enabled,
+    DisabledByUser,      // registered, but switched off in Task Manager / Login Items / the .desktop file
+    DisabledByPolicy,    // group policy / MDM — the app cannot override this
+    RequiresApproval     // macOS only — submitted, waiting for the user to approve in System Settings
+}
+
+public class StartupServiceOptions
+{
+    public string? Identifier { get; set; }      // Windows Run value name / Linux .desktop file name; defaults to the entry assembly name
+    public string? DisplayName { get; set; }     // Linux desktop entry Name; defaults to Identifier
+    public string? ExecutablePath { get; set; }  // defaults to Environment.ProcessPath
+    public IList<string> Arguments { get; set; } // Windows + Linux only
+}
+```
+
+### Platform behaviour
+
+| Platform | Mechanism | Notes |
+|----------|-----------|-------|
+| Windows (unpackaged, `WindowsPackageType=None`) | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` | Honours `ExecutablePath`/`Arguments`. `StartupApproved\Run` is read so a user switching the entry off in Task Manager surfaces as `DisabledByUser`. `OpenSettings` launches `ms-settings:startupapps` |
+| Windows (MSIX packaged) | Not supported | MSIX virtualizes `HKCU` writes into a per-package hive, so a `Run` entry never reaches the shell. Packaged apps need a `windows.startupTask` manifest declaration through WinRT, which needs a `-windows` TFM (this package doesn't currently build one). `IsSupported` is false |
+| macOS 13+ (Mac Catalyst) | `SMAppService.MainApp` | Registers the running app bundle — `Identifier`, `ExecutablePath` and `Arguments` are all ignored. The first `Register` commonly returns `RequiresApproval` until the user approves it under System Settings > General > Login Items (`OpenSettings` opens exactly that pane) |
+| Linux (bare `net10.0` build) | `~/.config/autostart/{Identifier}.desktop` (honours `XDG_CONFIG_HOME`) | Honours `ExecutablePath`/`Arguments`. `Hidden=true` or `X-GNOME-Autostart-enabled=false` surfaces as `DisabledByUser`. `OpenSettings` returns false — there is no cross-desktop settings page |
+| iOS / Android / macOS 12 and earlier | Not supported | `IsSupported` is false; every call returns `NotSupported` |
+
+### Usage
+
+```csharp
+public class StartupToggleViewModel(IStartupService startup)
+{
+    public bool CanToggle => startup.IsSupported;
+
+    public async Task<StartupServiceState> Load() => await startup.GetState();
+
+    public async Task<StartupServiceState> Set(bool runAtLogin)
+    {
+        var state = runAtLogin
+            ? await startup.Register()
+            : await startup.Unregister();
+
+        // Not failures — the OS is telling you the user has to finish the job.
+        if (state is StartupServiceState.RequiresApproval or StartupServiceState.DisabledByUser)
+            await startup.OpenSettings();
+
+        return state;
+    }
+}
+```
+
+Starting minimized is the app's job — register a marker argument and check it at launch:
+
+```csharp
+builder.AddStartupService(opts => opts.Arguments.Add("--autostart"));
+
+var launchedAtLogin = Environment.GetCommandLineArgs().Contains("--autostart");
+```
+
+:::caution
+`Register` returns the state the OS settled on, which is often not `Enabled`. Always bind your toggle to the returned state (or a fresh `GetState`) instead of assuming success — the user can switch the entry off outside your app at any time.
+:::
+
+`Register`/`Unregister` throw `InvalidOperationException` when the OS rejects the change outright (for example, a macOS login item that can't be submitted, or an HKCU key that can't be opened). `NotSupported`, `DisabledByUser`, `DisabledByPolicy` and `RequiresApproval` are returned states, not exceptions.
+
 ## Platform Lifecycle Hooks
 
 Platform lifecycle is wired by `UseShiny()` in `Shiny.Hosting.Maui` — register handlers against the per-platform interfaces in `Shiny.Core` (`IIosLifecycle.*`, `IMacLifecycle.*`, `IAndroidLifecycle.*`). This library does not duplicate that surface.
@@ -266,6 +357,7 @@ public static class MauiHostingExtensions
 {
     public static MauiAppBuilder AddInfrastructureModules(this MauiAppBuilder builder, params IEnumerable<IMauiModule> modules);
     public static MauiAppBuilder AddAppSupport(this MauiAppBuilder builder);
+    public static MauiAppBuilder AddStartupService(this MauiAppBuilder builder, Action<StartupServiceOptions>? configure = null);
     public static MauiAppBuilder AddAppStore(this MauiAppBuilder builder, Action<AppStoreOptions>? configure = null);
     public static MauiAppBuilder AddAppStore(this MauiAppBuilder builder, string? appleAppId = null, string? androidPackageName = null, string? windowsProductId = null, string? countryCode = null);
 }
@@ -284,6 +376,7 @@ public class Host : IMauiInitializeService
 - Use `Host.Services` to resolve services after the app is built
 - Register platform lifecycle handlers against `IIosLifecycle.*` / `IAndroidLifecycle.*` / `IMacLifecycle.*` (Shiny.Core); `UseShiny()` dispatches them
 - For each capability the app needs (AppSupport, AppStore), call the matching `Add*` extension — they don't auto-register
+- Gate any "run at startup" UI on `IStartupService.IsSupported` so it doesn't render on mobile
 - For `IAppStore` on Windows, always configure `WindowsProductId` — there's no auto-detect (the package family name from `AppInfo` is a different concept than the Store ProductId)
 
 ## Best Practices
@@ -294,3 +387,5 @@ public class Host : IMauiInitializeService
 4. **Register lifecycle handlers via DI** — use `[Singleton]` attributes on platform lifecycle handler classes (Shiny.Core's `IIosLifecycle.*` / `IAndroidLifecycle.*` / `IMacLifecycle.*`)
 5. **Detach event handlers** — `IAppSupport`'s native listeners auto-stop when the last subscriber detaches, so always unsubscribe on dispose/teardown to free the OS listener
 6. **Cache `AppStoreResult`** — store lookups are network calls; don't call `GetCurrent` on every navigation
+7. **Never cache `StartupServiceState`** — read it with `GetState` each time the UI shows; the user can change it in the OS while your app runs
+8. **Set `StartupServiceOptions.Identifier` explicitly** for shipping apps — the default (entry assembly name) changes if the assembly is ever renamed, orphaning the existing startup entry

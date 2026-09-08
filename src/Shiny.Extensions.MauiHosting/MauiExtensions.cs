@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Maui.Hosting;
 using Shiny.Impl;
@@ -34,6 +34,24 @@ public static class MauiHostingExtensions
     public static MauiAppBuilder AddAppSupport(this MauiAppBuilder builder)
     {
         builder.Services.TryAddSingleton<IAppSupport, AppSupport>();
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers <see cref="IStartupService"/> for installing the app into the desktop operating system's
+    /// startup (launch at login) list on Windows, macOS, and Linux.
+    /// </summary>
+    /// <param name="builder"></param>
+    /// <param name="configure">Optional inline configuration of <see cref="StartupServiceOptions"/>.</param>
+    public static MauiAppBuilder AddStartupService(
+        this MauiAppBuilder builder,
+        Action<StartupServiceOptions>? configure = null
+    )
+    {
+        if (configure != null)
+            builder.Services.Configure(configure);
+
+        builder.Services.TryAddSingleton<IStartupService, StartupService>();
         return builder;
     }
 

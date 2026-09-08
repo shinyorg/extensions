@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Hosting;
 using Shiny;
 
@@ -18,7 +18,14 @@ public static class MauiProgram
             })
             // Opt into each Shiny capability explicitly. Platform lifecycle is wired by UseShiny.
             .AddInfrastructureModules()
-            .AddAppSupport();
+            .AddAppSupport()
+            .AddStartupService(x =>
+            {
+                // Only used by the Linux desktop entry; Windows and macOS name the entry themselves.
+                x.DisplayName = "Shiny AppSupport Sample";
+                // A marker argument lets the app detect a login launch and start minimized.
+                x.Arguments.Add("--autostart");
+            });
 
 #if DEBUG
         builder.Logging.AddDebug();

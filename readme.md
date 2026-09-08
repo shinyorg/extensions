@@ -237,6 +237,7 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 * Static `Host.Services` for accessing the service provider anywhere
 * `IAppSupport` — device info (manufacturer, model, platform, idiom, OS version), browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/Windows, polling fallback elsewhere)
 * `IAppStore` — cross-platform store version lookups + deep links for Apple App Store (iTunes Search API), Google Play (HTML scrape), and Microsoft Store (DisplayCatalog API)
+* `IStartupService` — install/remove the app from the desktop OS "launch at login" list (Windows `Run` key, macOS `SMAppService` login items, Linux XDG autostart)
 * Opt-in registration: each capability is its own extension method so apps only pay for what they use
 
 ### Setup
@@ -267,6 +268,7 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
        .UseMauiApp<App>()
        .AddInfrastructureModules(new MyMauiModule())   // your IMauiModule list
        .AddAppSupport()                                // IAppSupport
+       .AddStartupService()                            // optional: IStartupService (desktop launch at login)
        .AddAppStore(opts =>                            // optional: IAppStore + config
        {
            opts.AppleAppId = "1234567890";
@@ -300,6 +302,48 @@ public class MyVm(IAppSupport app)
         _ = app.ResetOrientation();
     }
 }
+```
+
+#### IStartupService
+Installs the app into the operating system's startup (launch at login) list on desktop. Mobile platforms
+report `NotSupported` on every call, so the same code is safe to ship in a cross-platform app.
+
+```csharp
+public class StartupToggle(IStartupService startup)
+{
+    public async Task<string> Toggle(bool runAtLogin)
+    {
+        if (!startup.IsSupported)
+            return "Not a desktop platform";
+
+        var state = runAtLogin
+            ? await startup.Register()
+            : await startup.Unregister();
+
+        // Enabled | NotRegistered | DisabledByUser | DisabledByPolicy | RequiresApproval
+        if (state is StartupServiceState.RequiresApproval or StartupServiceState.DisabledByUser)
+            await startup.OpenSettings();   // the user has the final say in the OS UI
+
+        return state.ToString();
+    }
+}
+```
+
+| Platform | Mechanism | Notes |
+|----------|-----------|-------|
+| Windows (unpackaged, `WindowsPackageType=None`) | `HKCU\…\CurrentVersion\Run` | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry was switched off in Task Manager. `OpenSettings` opens `ms-settings:startupapps` |
+| macOS 13+ (Mac Catalyst) | `SMAppService.MainApp` | Registers the running app bundle. First registration commonly returns `RequiresApproval` until the user approves it in System Settings > General > Login Items, which `OpenSettings` opens |
+| Linux | `~/.config/autostart/{Identifier}.desktop` | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry has `Hidden=true` / `X-GNOME-Autostart-enabled=false` |
+| Windows (MSIX packaged) | Not supported | MSIX virtualizes `HKCU` writes, so a `Run` entry would be invisible to the shell — packaged apps need a `windows.startupTask` manifest declaration driven through WinRT. `IsSupported` reports false |
+| iOS / Android / macOS 12 and earlier | Not supported | `IsSupported` is false and every call returns `NotSupported` |
+
+```csharp
+builder.AddStartupService(opts =>
+{
+    opts.Identifier = "MyApp";                 // Windows Run value name / Linux .desktop file name
+    opts.DisplayName = "My App";               // Linux desktop entry name
+    opts.Arguments.Add("--autostart");         // Windows + Linux (macOS can't pass arguments)
+});
 ```
 
 #### IAppStore

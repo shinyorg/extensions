@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
 using Shiny;
@@ -8,6 +8,7 @@ namespace Sample.Maui;
 public partial class AppSupportPage : ContentPage
 {
     readonly IAppSupport appSupport;
+    readonly IStartupService startupService;
 
     public AppSupportPage()
     {
@@ -16,6 +17,9 @@ public partial class AppSupportPage : ContentPage
         // Host.Services is populated by Shiny once MAUI finishes initializing — safe to resolve here.
         this.appSupport = ShinyHost.Services.GetService(typeof(IAppSupport)) as IAppSupport
             ?? throw new InvalidOperationException("IAppSupport not registered — did you call AddAppSupport()?");
+
+        this.startupService = ShinyHost.Services.GetService(typeof(IStartupService)) as IStartupService
+            ?? throw new InvalidOperationException("IStartupService not registered — did you call AddStartupService()?");
 
         this.RenderDeviceInfo();
         this.RenderOrientation(this.appSupport.CurrentOrientation);
@@ -30,6 +34,9 @@ public partial class AppSupportPage : ContentPage
         this.appSupport.OrientationChanged += this.OnOrientationChanged;
         this.appSupport.CultureChanged += this.OnCultureChanged;
         this.appSupport.TimeZoneChanged += this.OnTimeZoneChanged;
+
+        // GetState reads from the OS every time — the user can flip the entry off outside the app.
+        _ = this.RefreshStartupState();
     }
 
     protected override void OnDisappearing()
@@ -65,6 +72,51 @@ public partial class AppSupportPage : ContentPage
     {
         var ok = await this.appSupport.SetOrientation(orientation);
         this.OrientationResultLabel.Text = $"SetOrientation({orientation}) → {(ok ? "applied" : "not supported on this platform")}";
+    }
+
+    async void OnRegisterStartup(object? sender, EventArgs e) => await this.SetStartup(true);
+
+    async void OnUnregisterStartup(object? sender, EventArgs e) => await this.SetStartup(false);
+
+    async void OnOpenStartupSettings(object? sender, EventArgs e)
+    {
+        var opened = await this.startupService.OpenSettings();
+        if (!opened)
+            this.StartupStateLabel.Text = "Startup: no OS settings page to open on this platform";
+    }
+
+    async Task RefreshStartupState()
+    {
+        if (!this.startupService.IsSupported)
+        {
+            this.StartupStateLabel.Text = "Startup: not supported on this platform";
+            return;
+        }
+        var state = await this.startupService.GetState();
+        this.StartupStateLabel.Text = $"Startup: {state}";
+    }
+
+    async Task SetStartup(bool register)
+    {
+        if (!this.startupService.IsSupported)
+        {
+            this.StartupStateLabel.Text = "Startup: not supported on this platform";
+            return;
+        }
+
+        try
+        {
+            var state = register
+                ? await this.startupService.Register()
+                : await this.startupService.Unregister();
+
+            // RequiresApproval/DisabledByUser aren't failures — the user finishes the job in OS settings.
+            this.StartupStateLabel.Text = $"Startup: {state}";
+        }
+        catch (Exception ex)
+        {
+            this.StartupStateLabel.Text = $"Startup failed: {ex.Message}";
+        }
     }
 
     async void OnOpenBrowser(object? sender, EventArgs e)
