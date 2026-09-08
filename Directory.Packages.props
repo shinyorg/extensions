@@ -19,6 +19,7 @@
         <PackageVersion Include="Microsoft.Maui.Platforms.MacOS.Essentials" Version="$(MauiLabsVersion)"/>
         <PackageVersion Include="Microsoft.Maui.Platforms.Linux.Gtk4" Version="$(MauiLabsVersion)"/>
         <PackageVersion Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" Version="$(MauiLabsVersion)"/>
+        <PackageVersion Include="Microsoft.Win32.SystemEvents" Version="10.0.0"/>
         <PackageVersion Include="System.Reactive" Version="7.0.0"/>
         <PackageVersion Include="Xamarin.Google.Android.Play.Review" Version="2.0.2.7"/>
         <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" Version="2.10.0.2"/>

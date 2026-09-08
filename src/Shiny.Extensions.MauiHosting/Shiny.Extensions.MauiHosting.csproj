@@ -26,6 +26,12 @@
         <PackageReference Include="Microsoft.Maui.Core"/>
     </ItemGroup>
 
+    <!-- SystemEvents (locale/time-zone change notifications) lives in its own assembly - the Windows TFM
+         only gets a type-forward without this reference. -->
+    <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+        <PackageReference Include="Microsoft.Win32.SystemEvents"/>
+    </ItemGroup>
+
     <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
         <PackageReference Include="Xamarin.Google.Android.Play.Review"/>
         <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core"/>
