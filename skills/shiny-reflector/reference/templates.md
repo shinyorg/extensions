@@ -98,6 +98,9 @@ if (reflector.HasProperty("{PropertyName}"))
 
 For objects without the `[Reflector]` attribute:
 
+> Not trim or AOT safe - this overload is `[RequiresUnreferencedCode]`. Use the parameterless
+> `GetReflector()` with `[Reflector]`-marked types when trimming or publishing Native AOT.
+
 ```csharp
 // Get reflector with true reflection fallback
 var reflector = someObject.GetReflector(fallbackToTrueReflection: true);

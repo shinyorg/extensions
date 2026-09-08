@@ -105,15 +105,30 @@ public record PropertyGeneratedInfo(
 Gets the reflector for any object.
 
 ```csharp
+// trim and AOT safe - source-generated reflectors only
+public static IReflectorClass? GetReflector(this object @this);
+
+[RequiresUnreferencedCode]
 public static IReflectorClass? GetReflector(
     this object @this,
-    bool fallbackToTrueReflection = false
+    bool fallbackToTrueReflection
 );
 ```
 
 - Returns the source-generated reflector if the object implements `IHasReflectorClass`
 - If `fallbackToTrueReflection` is `true`, creates a `TrueReflectionReflectorClass` for non-attributed types
 - Returns `null` if no reflector is available and fallback is disabled
+- The parameterless overload carries no trim annotation; the two-argument overload is
+  `[RequiresUnreferencedCode]` because the fallback reflects over a type only known at runtime
+
+### Trim and AOT annotations
+
+| API | Annotation |
+|-----|-----------|
+| `GetReflector()` | none - trim and AOT safe |
+| `GetReflector(bool)` | `[RequiresUnreferencedCode]` |
+| `TrueReflectionReflectorClass` | `[RequiresUnreferencedCode]` |
+| `ReflectorJsonConverter`, `ReflectorJsonConverter<T>` | `[RequiresUnreferencedCode]`, `[RequiresDynamicCode]` |
 
 ### HasProperty
 

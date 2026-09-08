@@ -53,13 +53,6 @@ jobs:
         name: nuget-artifacts
         path: '**/*.nupkg'
 
-    - name: Publish Artifacts
-      uses: actions/upload-artifact@v7
-      with:
-        name: nugets
-        path: ${{ github.workspace }}/artifacts
-        retention-days: 5
-
     - name: NuGet Login (OIDC)
       id: nuget-login
       if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/v') }}

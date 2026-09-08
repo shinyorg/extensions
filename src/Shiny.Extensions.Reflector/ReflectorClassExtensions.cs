@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Shiny.Extensions.Reflector.Infrastructure;
 
 namespace Shiny.Extensions.Reflector;
@@ -9,9 +10,24 @@ public static class ReflectorClassExtensions
     /// If the object is an <see cref="IReflectorClass"/>, this will return it.
     /// </summary>
     /// <param name="this">Your object</param>
+    /// <returns>The source generated reflector, or null if the class isn't marked with <see cref="ReflectorAttribute"/></returns>
+    /// <remarks>This overload only ever returns a source generated reflector, so it is trim and AOT safe.</remarks>
+    public static IReflectorClass? GetReflector(this object @this)
+        => @this is IHasReflectorClass reflector ? reflector.Reflector : null;
+
+    /// <summary>
+    /// If the object is an <see cref="IReflectorClass"/>, this will return it.
+    /// </summary>
+    /// <param name="this">Your object</param>
     /// <param name="fallbackToTrueReflection">Use true reflection if necessary</param>
     /// <returns>A reflector isn't if one is found to exist on the class</returns>
-    public static IReflectorClass? GetReflector(this object @this, bool fallbackToTrueReflection = false)
+    /// <remarks>
+    /// The runtime reflection fallback can't be statically analyzed, so this overload is not trim or AOT
+    /// safe. Use <see cref="GetReflector(object)"/> when every reflected type is marked with
+    /// <see cref="ReflectorAttribute"/>.
+    /// </remarks>
+    [RequiresUnreferencedCode(TrimWarnings.TrueReflection)]
+    public static IReflectorClass? GetReflector(this object @this, bool fallbackToTrueReflection)
     {
         if (@this is IHasReflectorClass reflector)
             return reflector.Reflector;
@@ -100,7 +116,7 @@ public static class ReflectorClassExtensions
     /// <param name="value"></param>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public static bool TryGetValue<T>(this IReflectorClass @this, string propertyName, out T value)
+    public static bool TryGetValue<T>(this IReflectorClass @this, string propertyName, [MaybeNullWhen(false)] out T value)
     {
         var result = false;
         value = default;

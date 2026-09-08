@@ -137,9 +137,15 @@ For objects without `[Reflector]`, use the fallback:
 var reflector = someObject.GetReflector(fallbackToTrueReflection: true);
 ```
 
+**Not trim or AOT safe.** This overload is marked `[RequiresUnreferencedCode]` and produces `IL2026` in
+trimmed or Native AOT apps. The parameterless `GetReflector()` only returns source-generated reflectors and
+carries no annotation — prefer it, and mark the reflected types with `[Reflector]`.
+
 ### 4. JSON Serialization
 
-Use `ReflectorJsonConverter` for reflection-free JSON:
+Use `ReflectorJsonConverter` to serialize through the generated reflectors. Note that both converters are
+marked `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]` — property values still go through the
+`Type`-based `JsonSerializer` overloads, so use a `JsonSerializerContext` in trimmed or Native AOT apps:
 
 ```csharp
 // Generic converter for a specific type

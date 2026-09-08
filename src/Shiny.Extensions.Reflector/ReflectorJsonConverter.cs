@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Shiny.Extensions.Reflector.Infrastructure;
@@ -8,6 +9,13 @@ namespace Shiny.Extensions.Reflector;
 /// A JsonConverter that uses the Shiny.Extensions.Reflector system for high-performance serialization
 /// without traditional reflection overhead.
 /// </summary>
+/// <remarks>
+/// Property values are (de)serialized through the <see cref="Type"/>-based <see cref="JsonSerializer"/>
+/// overloads, so the property types cannot be discovered statically. This converter is therefore not
+/// trim or AOT safe - use a <see cref="JsonSerializerContext"/> for those apps.
+/// </remarks>
+[RequiresUnreferencedCode(TrimWarnings.JsonConverter)]
+[RequiresDynamicCode(TrimWarnings.JsonConverter)]
 public class ReflectorJsonConverter<T> : JsonConverter<T> where T : class, new()
 {
     private readonly bool _useSourceGeneratedReflector;
@@ -132,6 +140,12 @@ public class ReflectorJsonConverter<T> : JsonConverter<T> where T : class, new()
 /// <summary>
 /// Non-generic version of ReflectorJsonConverter for easier registration with JsonSerializerOptions.
 /// </summary>
+/// <remarks>
+/// The factory inspects and instantiates types that are only known at runtime, so it is neither trim
+/// nor AOT safe - use a <see cref="JsonSerializerContext"/> for those apps.
+/// </remarks>
+[RequiresUnreferencedCode(TrimWarnings.JsonConverter)]
+[RequiresDynamicCode(TrimWarnings.JsonConverter)]
 public class ReflectorJsonConverter : JsonConverterFactory
 {
     private readonly bool _useSourceGeneratedReflector;

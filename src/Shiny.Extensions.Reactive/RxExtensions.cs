@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -9,11 +10,26 @@ using Shiny.Extensions.Reflector;
 namespace Shiny;
 
 
+static class TrimWarnings
+{
+    public const string PropertyReflection =
+        "Property observation uses runtime reflection to resolve the event and the property value. Mark the observed type with Shiny's ReflectorAttribute so a trim safe reflector is generated.";
+}
+
+
 public record ItemChanged<T>(
     T Object,
     string? PropertyName
 )
 {
+    /// <summary>
+    /// Reads the changed property off the object.
+    /// </summary>
+    /// <remarks>
+    /// Falls back to runtime reflection when the object has no source generated reflector, so this is
+    /// not trim or AOT safe unless the object's type is marked with Shiny's ReflectorAttribute.
+    /// </remarks>
+    [RequiresUnreferencedCode(TrimWarnings.PropertyReflection)]
     public object? GetValue()
         => this.PropertyName == null ? null : this.Object!.GetReflector(true)?[this.PropertyName] ?? null;
 }
@@ -29,6 +45,11 @@ public static class ObservableExtensions
     /// <param name="This"></param>
     /// <param name="expression"></param>
     /// <returns></returns>
+    /// <remarks>
+    /// Rx's FromEventPattern and the reflector fallback both use runtime reflection, so this is not
+    /// trim or AOT safe.
+    /// </remarks>
+    [RequiresUnreferencedCode(TrimWarnings.PropertyReflection)]
     public static IObservable<TRet?> WhenAnyProperty<TSender, TRet>(this TSender This, Expression<Func<TSender, TRet>> expression) where TSender : INotifyPropertyChanged
     {
         var reflector = This!.GetReflector(true)!;
@@ -48,6 +69,8 @@ public static class ObservableExtensions
     /// <typeparam name="TSender"></typeparam>
     /// <param name="This"></param>
     /// <returns></returns>
+    /// <remarks>Rx's FromEventPattern uses runtime reflection, so this is not trim or AOT safe.</remarks>
+    [RequiresUnreferencedCode(TrimWarnings.PropertyReflection)]
     public static IObservable<ItemChanged<TSender>> WhenAnyProperty<TSender>(this TSender This) where TSender : INotifyPropertyChanged
         => Observable
             .FromEventPattern<PropertyChangedEventArgs>(This, nameof(INotifyPropertyChanged.PropertyChanged))

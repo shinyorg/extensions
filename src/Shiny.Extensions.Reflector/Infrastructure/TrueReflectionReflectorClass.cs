@@ -1,8 +1,17 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Shiny.Extensions.Reflector.Infrastructure;
 
 
+/// <summary>
+/// The runtime reflection fallback used when a type has no source generated reflector.
+/// </summary>
+/// <remarks>
+/// The reflected type is only known at runtime, so its properties cannot be discovered statically.
+/// This type is not trim or AOT safe - apply <see cref="ReflectorAttribute"/> to the type instead.
+/// </remarks>
+[RequiresUnreferencedCode(TrimWarnings.TrueReflection)]
 public class TrueReflectionReflectorClass(object obj) : IReflectorClass
 {
     public object ReflectedObject => obj;

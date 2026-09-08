@@ -7,7 +7,7 @@ This library gives you the power of reflection... without the actual reflection!
 - List Properties as well as what have getters and setters
 - Read/Write Values using string keys and object values
 - Easy property indexer for loose typing access (ie. myreflector["MyProperty"] = 123)
-- Fallback to reflection when a `reflector` is not available
+- Opt-in fallback to reflection when a `reflector` is not available (marked `[RequiresUnreferencedCode]` - `GetReflector()` without the fallback flag is trim and AOT safe)
 - Generate build variables of your choice into a static class for easy access
 - Works with the [MVVM Community Toolkit](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/) source generation
 
