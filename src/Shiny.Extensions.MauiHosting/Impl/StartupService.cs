@@ -118,9 +118,9 @@ public sealed partial class StartupService : IStartupService
     /// declaration driven through WinRT, which this package can't reach from the bare net10.0 TFM.
     /// </summary>
     public bool IsSupported
-        => IsLinuxDesktop || (OperatingSystem.IsWindows() && !IsPackagedApp());
+        => this.IsLinuxSupported() || (OperatingSystem.IsWindows() && !IsPackagedApp());
 
-    static bool IsLinuxDesktop => OperatingSystem.IsLinux() && !OperatingSystem.IsAndroid();
+    static bool IsLinux => OperatingSystem.IsLinux() && !OperatingSystem.IsAndroid();
 
 
     Task<StartupServiceState> GetStateCore(CancellationToken cancellationToken)
@@ -128,11 +128,9 @@ public sealed partial class StartupService : IStartupService
         if (!this.IsSupported)
             return Task.FromResult(StartupServiceState.NotSupported);
 
-        return Task.FromResult(
-            OperatingSystem.IsWindows()
-                ? this.GetWindowsState()
-                : this.GetLinuxState()
-        );
+        return OperatingSystem.IsWindows()
+            ? Task.FromResult(this.GetWindowsState())
+            : this.GetLinuxState(cancellationToken);
     }
 
 
@@ -141,10 +139,10 @@ public sealed partial class StartupService : IStartupService
         if (!this.IsSupported)
             return Task.FromResult(StartupServiceState.NotSupported);
 
-        if (OperatingSystem.IsWindows())
-            this.WriteWindowsEntry();
-        else
-            this.WriteLinuxEntry();
+        if (!OperatingSystem.IsWindows())
+            return this.RegisterLinux(cancellationToken);
+
+        this.WriteWindowsEntry();
 
         // Read back rather than assuming Enabled - the user may have switched the entry off previously and
         // Windows keeps that decision in a separate key that an app isn't allowed to overwrite.
@@ -157,11 +155,10 @@ public sealed partial class StartupService : IStartupService
         if (!this.IsSupported)
             return Task.FromResult(StartupServiceState.NotSupported);
 
-        if (OperatingSystem.IsWindows())
-            this.DeleteWindowsEntry();
-        else
-            this.DeleteLinuxEntry();
+        if (!OperatingSystem.IsWindows())
+            return this.UnregisterLinux(cancellationToken);
 
+        this.DeleteWindowsEntry();
         return Task.FromResult(StartupServiceState.NotRegistered);
     }
 
@@ -281,7 +278,48 @@ public sealed partial class StartupService : IStartupService
 
     #region Linux
 
-    StartupServiceState GetLinuxState()
+    bool IsSystemdMode => this.options.LinuxMode != LinuxStartupMode.XdgAutostart;
+    bool IsSystemMode => this.options.LinuxMode == LinuxStartupMode.SystemdSystem;
+
+
+    bool IsLinuxSupported()
+    {
+        if (!IsLinux)
+            return false;
+
+        return !this.IsSystemdMode || this.IsSystemdAvailable();
+    }
+
+
+    Task<StartupServiceState> GetLinuxState(CancellationToken cancellationToken)
+        => this.IsSystemdMode
+            ? this.GetSystemdState(cancellationToken)
+            : Task.FromResult(this.GetXdgState());
+
+
+    async Task<StartupServiceState> RegisterLinux(CancellationToken cancellationToken)
+    {
+        if (!this.IsSystemdMode)
+        {
+            this.WriteXdgEntry();
+            return this.GetXdgState();
+        }
+        return await this.RegisterSystemd(cancellationToken).ConfigureAwait(false);
+    }
+
+
+    async Task<StartupServiceState> UnregisterLinux(CancellationToken cancellationToken)
+    {
+        if (!this.IsSystemdMode)
+        {
+            this.DeleteXdgEntry();
+            return StartupServiceState.NotRegistered;
+        }
+        return await this.UnregisterSystemd(cancellationToken).ConfigureAwait(false);
+    }
+
+
+    StartupServiceState GetXdgState()
     {
         var path = this.GetAutoStartPath();
         if (!File.Exists(path))
@@ -300,7 +338,7 @@ public sealed partial class StartupService : IStartupService
     }
 
 
-    void WriteLinuxEntry()
+    void WriteXdgEntry()
     {
         var (exe, args) = this.ResolveCommand();
         var path = this.GetAutoStartPath();
@@ -322,7 +360,7 @@ public sealed partial class StartupService : IStartupService
     }
 
 
-    void DeleteLinuxEntry()
+    void DeleteXdgEntry()
     {
         var path = this.GetAutoStartPath();
         if (File.Exists(path))
@@ -357,6 +395,269 @@ public sealed partial class StartupService : IStartupService
     // A newline would start a new key in the entry file, so it never gets written through.
     static string DesktopEntryValue(string value)
         => value.Replace("\r", String.Empty).Replace("\n", " ");
+
+
+    #region systemd
+
+    const string ServiceSuffix = ".service";
+    const string SystemUnitDirectory = "/etc/systemd/system";
+
+    string UnitName => this.GetIdentifier() + ServiceSuffix;
+
+
+    bool IsSystemdAvailable()
+    {
+        // The documented sd_booted() check - this directory only exists when systemd is PID 1.
+        if (!Directory.Exists("/run/systemd/system"))
+            return false;
+
+        // A sandboxed app can't write to the host's unit directories or reach its service manager. Flatpak
+        // apps should go through the Background portal instead.
+        if (File.Exists("/.flatpak-info") || !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("SNAP")))
+            return false;
+
+        if (this.IsSystemMode)
+            return true;
+
+        // `systemctl --user` needs the per-user manager, which pam_systemd starts and exposes under the
+        // user's runtime directory.
+        var runtimeDir = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        return !String.IsNullOrWhiteSpace(runtimeDir) && Directory.Exists(Path.Combine(runtimeDir, "systemd"));
+    }
+
+
+    async Task<StartupServiceState> GetSystemdState(CancellationToken cancellationToken)
+    {
+        var path = this.GetUnitPath();
+        if (IsMasked(path))
+            return StartupServiceState.DisabledByPolicy;
+
+        if (!File.Exists(path))
+            return StartupServiceState.NotRegistered;
+
+        var (_, output, _) = await this.RunSystemctl(cancellationToken, "is-enabled", this.UnitName).ConfigureAwait(false);
+        var state = output.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+
+        return state switch
+        {
+            "enabled" or "enabled-runtime" or "linked" or "linked-runtime" or "alias" => StartupServiceState.Enabled,
+            "masked" or "masked-runtime" => StartupServiceState.DisabledByPolicy,
+            // Register always enables, so a unit file that's present but disabled was switched off by hand.
+            "disabled" => StartupServiceState.DisabledByUser,
+            _ => StartupServiceState.NotRegistered
+        };
+    }
+
+
+    async Task<StartupServiceState> RegisterSystemd(CancellationToken cancellationToken)
+    {
+        this.AssertCanManageUnits();
+
+        var path = this.GetUnitPath();
+
+        // `systemctl mask` replaces the unit file with a /dev/null symlink - writing through it would do
+        // nothing, and an app has no business unmasking what an administrator masked.
+        if (IsMasked(path))
+            return StartupServiceState.DisabledByPolicy;
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, this.BuildUnitFile());
+
+        await this.RunSystemctlOrThrow(cancellationToken, "daemon-reload").ConfigureAwait(false);
+
+        // Deliberately not `--now`: for a GUI app the process doing the registering is the one that would
+        // be started, and a second instance is never what anyone wants. The unit starts on the next
+        // login/boot, or immediately via `systemctl [--user] start`.
+        await this.RunSystemctlOrThrow(cancellationToken, "enable", this.UnitName).ConfigureAwait(false);
+
+        return await this.GetSystemdState(cancellationToken).ConfigureAwait(false);
+    }
+
+
+    async Task<StartupServiceState> UnregisterSystemd(CancellationToken cancellationToken)
+    {
+        var path = this.GetUnitPath();
+        if (IsMasked(path))
+            return StartupServiceState.DisabledByPolicy;
+
+        if (!File.Exists(path))
+            return StartupServiceState.NotRegistered;
+
+        this.AssertCanManageUnits();
+
+        // Disable first so the WantedBy symlink goes away with the unit - a dangling one makes systemd
+        // log a warning on every boot. Failure here isn't fatal; the unit file is removed either way.
+        await this.RunSystemctl(cancellationToken, "disable", this.UnitName).ConfigureAwait(false);
+        File.Delete(path);
+        await this.RunSystemctl(cancellationToken, "daemon-reload").ConfigureAwait(false);
+
+        return StartupServiceState.NotRegistered;
+    }
+
+
+    void AssertCanManageUnits()
+    {
+        if (this.IsSystemMode && !Environment.IsPrivilegedProcess)
+            throw new InvalidOperationException($"LinuxStartupMode.SystemdSystem writes to {SystemUnitDirectory} and requires root - run the installer with sudo or use LinuxStartupMode.SystemdUser");
+    }
+
+
+    string GetUnitPath()
+    {
+        var identifier = this.GetIdentifier();
+
+        // Unit names are a restricted alphabet - '@' would turn the unit into a template, so it's refused too.
+        foreach (var c in identifier)
+        {
+            if (!(Char.IsAsciiLetterOrDigit(c) || c is ':' or '_' or '.' or '-'))
+                throw new InvalidOperationException($"StartupServiceOptions.Identifier '{identifier}' is not a valid systemd unit name - use letters, digits and ':', '_', '.', '-' only");
+        }
+
+        if (this.IsSystemMode)
+            return Path.Combine(SystemUnitDirectory, identifier + ServiceSuffix);
+
+        var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+        if (String.IsNullOrWhiteSpace(configHome))
+            configHome = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
+
+        return Path.Combine(configHome, "systemd", "user", identifier + ServiceSuffix);
+    }
+
+
+    static bool IsMasked(string path)
+    {
+        var info = new FileInfo(path);
+        return info.LinkTarget == "/dev/null";
+    }
+
+
+    string BuildUnitFile()
+    {
+        var (exe, args) = this.ResolveCommand();
+
+        // ExecStart's first word has to be absolute - systemd won't search PATH in older releases, and a
+        // relative path would resolve against whatever directory the manager happens to be in.
+        if (!Path.IsPathRooted(exe))
+            throw new InvalidOperationException($"StartupServiceOptions.ExecutablePath '{exe}' must be an absolute path for a systemd unit");
+
+        var workingDir = this.options.WorkingDirectory;
+        if (String.IsNullOrWhiteSpace(workingDir))
+            workingDir = AppContext.BaseDirectory;
+
+        var mode = this.options.LinuxMode;
+        var sb = new StringBuilder();
+        sb.AppendLine("[Unit]");
+        sb.Append("Description=").AppendLine(SystemdValue(this.options.DisplayName ?? this.GetIdentifier()));
+        switch (mode)
+        {
+            case LinuxStartupMode.SystemdGraphicalSession:
+                // PartOf stops the app when the session ends; After waits for the display to be available.
+                sb.AppendLine("PartOf=graphical-session.target");
+                sb.AppendLine("After=graphical-session.target");
+                break;
+
+            case LinuxStartupMode.SystemdSystem:
+                sb.AppendLine("After=network.target");
+                break;
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("[Service]");
+        sb.AppendLine("Type=simple");
+        sb.Append("ExecStart=").AppendLine(String.Join(" ", args.Prepend(exe).Select(SystemdQuote)));
+        sb.Append("WorkingDirectory=").AppendLine(SystemdValue(workingDir.TrimEnd('/')));
+
+        // A framework-dependent app with a private runtime install (~/.dotnet) only finds it through
+        // DOTNET_ROOT, which systemd won't inherit from the user's shell.
+        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        if (!String.IsNullOrWhiteSpace(dotnetRoot))
+            sb.Append("Environment=").AppendLine(SystemdQuote("DOTNET_ROOT=" + dotnetRoot));
+
+        if (mode == LinuxStartupMode.SystemdSystem && !String.IsNullOrWhiteSpace(this.options.LinuxServiceUser))
+        {
+            var user = this.options.LinuxServiceUser;
+            if (user.Any(Char.IsWhiteSpace))
+                throw new InvalidOperationException($"StartupServiceOptions.LinuxServiceUser '{user}' is not a valid account name");
+
+            sb.Append("User=").AppendLine(SystemdValue(user));
+        }
+
+        if (this.options.RestartOnFailure)
+        {
+            sb.AppendLine("Restart=on-failure");
+            sb.AppendLine("RestartSec=5");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("[Install]");
+        sb.Append("WantedBy=").AppendLine(mode switch
+        {
+            LinuxStartupMode.SystemdGraphicalSession => "graphical-session.target",
+            LinuxStartupMode.SystemdSystem => "multi-user.target",
+            _ => "default.target"
+        });
+
+        return sb.ToString();
+    }
+
+
+    Task<(int ExitCode, string Output, string Error)> RunSystemctl(CancellationToken cancellationToken, params string[] args)
+        => RunSystemctl(!this.IsSystemMode, cancellationToken, args);
+
+
+    async Task RunSystemctlOrThrow(CancellationToken cancellationToken, params string[] args)
+    {
+        var (exitCode, _, error) = await this.RunSystemctl(cancellationToken, args).ConfigureAwait(false);
+        if (exitCode != 0)
+            throw new InvalidOperationException($"systemctl {String.Join(" ", args)} failed ({exitCode}): {error.Trim()}");
+    }
+
+
+    static async Task<(int ExitCode, string Output, string Error)> RunSystemctl(bool user, CancellationToken cancellationToken, string[] args)
+    {
+        var psi = new ProcessStartInfo("systemctl")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        if (user)
+            psi.ArgumentList.Add("--user");
+
+        foreach (var arg in args)
+            psi.ArgumentList.Add(arg);
+
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException("Could not start systemctl");
+
+        // Both streams are drained concurrently - reading one to the end first can deadlock once the other
+        // fills its pipe buffer.
+        var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+        return (process.ExitCode, await stdout.ConfigureAwait(false), await stderr.ConfigureAwait(false));
+    }
+
+
+    // systemd command-line quoting: double quotes with C-style backslash escapes. '%' starts a unit
+    // specifier and '$' an environment expansion, so both are doubled to stay literal.
+    static string SystemdQuote(string value)
+    {
+        var escaped = SystemdValue(value)
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("$", "$$");
+
+        return "\"" + escaped + "\"";
+    }
+
+
+    // Newlines would start a new key in the unit file, and '%' is expanded as a specifier in most settings.
+    static string SystemdValue(string value)
+        => value.Replace("\r", String.Empty).Replace("\n", " ").Replace("%", "%%");
+
+    #endregion
+
 
     #endregion
 #endif

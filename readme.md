@@ -237,7 +237,7 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 * Static `ShinyHost.Services` for accessing the service provider anywhere
 * `IAppSupport` — device info (manufacturer, model, platform, idiom, OS version), browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/macOS/Windows, polling fallback elsewhere)
 * `IAppStore` — cross-platform store version lookups + deep links for the Apple App Store and Mac App Store (iTunes Search API), Google Play (HTML scrape), Microsoft Store (DisplayCatalog API), and Flatpak/Snap on Linux
-* `IStartupService` — install/remove the app from the desktop OS "launch at login" list (Windows `Run` key, macOS `SMAppService` login items on both Mac Catalyst and AppKit, Linux XDG autostart)
+* `IStartupService` — install/remove the app from the desktop OS "launch at login" list (Windows `Run` key, macOS `SMAppService` login items on both Mac Catalyst and AppKit, Linux XDG autostart or a systemd user/system unit — so a Linux app can start as a GUI app at login or as a headless service at boot)
 * Desktop backends from [dotnet/maui-labs](https://github.com/dotnet/maui-labs): macOS AppKit (`net10.0-macos`) is served by this package, Linux GTK4 by the companion `Shiny.Extensions.MauiHosting.Linux` package
 * Opt-in registration: each capability is its own extension method so apps only pay for what they use
 
@@ -334,7 +334,7 @@ public class StartupToggle(IStartupService startup)
 |----------|-----------|-------|
 | Windows (unpackaged, `WindowsPackageType=None`) | `HKCU\…\CurrentVersion\Run` | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry was switched off in Task Manager. `OpenSettings` opens `ms-settings:startupapps` |
 | macOS 13+ (Mac Catalyst **and** AppKit / `net10.0-macos`) | `SMAppService.MainApp` | Registers the running app bundle. First registration commonly returns `RequiresApproval` until the user approves it in System Settings > General > Login Items, which `OpenSettings` opens |
-| Linux | `~/.config/autostart/{Identifier}.desktop` | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry has `Hidden=true` / `X-GNOME-Autostart-enabled=false` |
+| Linux | `~/.config/autostart/{Identifier}.desktop` by default, or a systemd unit (see `LinuxMode` below) | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry has `Hidden=true` / `X-GNOME-Autostart-enabled=false` (or the unit was `systemctl disable`d), `DisabledByPolicy` when the unit is masked |
 | Windows (MSIX packaged) | Not supported | MSIX virtualizes `HKCU` writes, so a `Run` entry would be invisible to the shell — packaged apps need a `windows.startupTask` manifest declaration driven through WinRT. `IsSupported` reports false |
 | iOS / Android / macOS 12 and earlier | Not supported | `IsSupported` is false and every call returns `NotSupported` |
 
@@ -345,6 +345,37 @@ builder.AddStartupService(opts =>
     opts.DisplayName = "My App";               // Linux desktop entry name
     opts.Arguments.Add("--autostart");         // Windows + Linux (macOS can't pass arguments)
 });
+```
+
+On Linux, `LinuxMode` picks how the app is started — as a GUI app at login, or as a general service:
+
+| `LinuxStartupMode` | Kind | Written to | Starts |
+|--------------------|------|------------|--------|
+| `XdgAutostart` (default) | GUI | `~/.config/autostart/{Identifier}.desktop` | At desktop login, on any XDG desktop |
+| `SystemdGraphicalSession` | GUI | `~/.config/systemd/user/{Identifier}.service`, `WantedBy=graphical-session.target` | Once the desktop session is up; stopped when it ends. Needs a session that reaches `graphical-session.target` (GNOME, KDE Plasma) |
+| `SystemdUser` | Service | `~/.config/systemd/user/{Identifier}.service`, `WantedBy=default.target` | When the user's service manager starts — first login, or at boot with `loginctl enable-linger` |
+| `SystemdSystem` | Service | `/etc/systemd/system/{Identifier}.service`, `WantedBy=multi-user.target` | At boot, no login. `Register`/`Unregister` require root |
+
+The systemd modes add crash restarts (`RestartOnFailure`, on by default), journald logging
+(`journalctl [--user] -u {Identifier}`) and `systemctl` control. `Register` runs `daemon-reload` + `enable`
+but never starts a second copy — the unit runs from the next login/boot. The `Identifier` must be a valid
+unit name (letters, digits, `:_.-`). The systemd modes report `IsSupported = false` on a non-systemd host,
+without a user service manager, or inside a Flatpak/Snap sandbox.
+
+The service is registered from plain `IServiceCollection`, so a Generic Host worker can install itself:
+
+```csharp
+services.AddStartupService(opts =>
+{
+    opts.Identifier = "my-worker";
+    opts.LinuxMode = LinuxStartupMode.SystemdSystem;
+    opts.LinuxServiceUser = "myworker";     // User= (defaults to root)
+    // opts.WorkingDirectory defaults to AppContext.BaseDirectory
+});
+
+// e.g. `sudo ./my-worker --install`
+if (args.Contains("--install"))
+    await host.Services.GetRequiredService<IStartupService>().Register();
 ```
 
 A plain AppKit app with no `MauiAppBuilder` can register against the service collection instead — the
@@ -433,7 +464,7 @@ builder
     .AddInfrastructureModules(new MyMauiModule())
     .AddLinuxAppSupport()                            // IAppSupport over the GTK4 Essentials services
     .AddLinuxAppStore("org.example.MyApp")           // IAppStore over Flatpak / Snap
-    .AddStartupService();                            // XDG autostart, from the base package
+    .AddStartupService();                            // XDG autostart (or a systemd unit via LinuxMode), from the base package
 
 return builder.Build();
 ```
