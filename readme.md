@@ -298,11 +298,22 @@ public class MyVm(IAppSupport app)
         app.CultureChanged += (s, e) => { /* new CultureInfo */ };
         app.TimeZoneChanged += (s, e) => { /* new TimeZoneInfo */ };
 
-        // Programmatic orientation lock
-        _ = app.SetOrientation(DisplayOrientation.Landscape);
+        // Programmatic orientation lock - call once a page has appeared: UIKit ignores a change
+        // made while a navigation transition is animating
+        var turned = await app.SetOrientation(DisplayOrientation.Landscape);
         _ = app.ResetOrientation();
     }
 }
+```
+
+On iOS, `SetOrientation` turns the device, but UIKit asks the **app delegate** which orientations a
+window may take - so to *hold* it there, return `IosOrientationLock.Supported` from yours. Without
+this the device turns once and tilting it turns it straight back.
+
+```csharp
+[Export("application:supportedInterfaceOrientationsForWindow:")]
+public UIInterfaceOrientationMask GetSupportedInterfaceOrientations(UIApplication application, UIWindow? forWindow)
+    => Shiny.IosOrientationLock.Supported;
 ```
 
 #### IStartupService

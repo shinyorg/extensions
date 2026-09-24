@@ -19,10 +19,20 @@ public interface IAppSupport
     event EventHandler<DisplayOrientation>? OrientationChanged;
 
     /// <summary>
-    /// Requests that the OS lock the app to <paramref name="orientation"/>. Returns false
-    /// if the platform cannot honour the request (e.g. orientation isn't permitted by the
-    /// active view controller on iOS, or no current Activity on Android).
+    /// Turns the device to <paramref name="orientation"/> and holds it there. Answers whether it ended
+    /// up in that orientation - false where the platform cannot do it (iOS before 16, Mac Catalyst,
+    /// macOS) or has nothing to do it with (no current Activity on Android).
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>iOS</b>: holding the orientation needs one line in the app delegate - see
+    /// <c>IosOrientationLock</c>. Without it the device turns once and is free to turn back.
+    /// </para>
+    /// <para>
+    /// UIKit ignores an orientation change made while a navigation transition is animating. Call this
+    /// once a page has appeared, not from a page that is disappearing - after the transition, not in it.
+    /// </para>
+    /// </remarks>
     Task<bool> SetOrientation(DisplayOrientation orientation);
 
     /// <summary>

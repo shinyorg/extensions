@@ -1,16 +1,12 @@
 {
     "$schema": "https://raw.githubusercontent.com/AArnott/Nerdbank.GitVersioning/master/src/NerdBank.GitVersioning/version.schema.json",
-    "version": "5.3.0",
-    "versionHeightOffset": 50,
+    "version": "5.3.1",
     "release": {
         "branchName": "v{version}",
         "versionIncrement": "build",
         "firstUnstableTag": "preview"
     },
     "publicReleaseRefSpec": [
-        "^refs/heads/master$",
-        "^refs/heads/main",
-        "^refs/heads/preview$",
         "^refs/tags/v\\d+\\.\\d+",
         "^refs/tags/v\\d+\\.\\d+\\.\\d+"
     ]
