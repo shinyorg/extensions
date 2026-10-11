@@ -187,11 +187,10 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 | Linux / other desktop | `StoreKeys.Default` | JSON file (`LocalApplicationData`)  |
 | Linux / other desktop | `StoreKeys.Secure`  | JSON file (**not encrypted**)       |
 | WebAssembly  | `StoreKeys.Default`  | localStorage                        |
-| WebAssembly  | `"session"`          | sessionStorage                      |
 | All          | any                  | In-memory dictionary (via `MemoryKeyValueStore`, great for testing) |
 
 > [!NOTE]
-> For WebAssembly, install the `Shiny.Extensions.Stores.Web` package and add `services.AddShinyWebAssemblyStores()` to your service collection.
+> For Blazor WebAssembly, add `services.AddLocalStorageKeyValueStore()` (and optionally `services.AddLocalStorageRepository()`) to your service collection, then call `host.Services.UseShinyStores()` after `builder.Build()`. These ship in `Shiny.Extensions.Stores` itself (the separate `Shiny.Extensions.Stores.Web` package has been merged in) and call `window.localStorage` directly through `IJSInProcessRuntime` — no `<script>` tag is needed.
 
 > [!NOTE]
 > A dedicated `net10.0-macos` target gives plain macOS apps NSUserDefaults + Keychain (real secure storage). Other desktop targets that resolve the base `net10.0` asset (Linux, and unpackaged Windows) persist both `Default` and `Secure` to a JSON file under `{LocalApplicationData}/{EntryAssemblyName}` so settings survive restarts. Override the location by setting `Shiny.Stores.FileStoreDirectory` before first access. On these file fallbacks `Secure` is **not** encrypted (unpackaged Windows keeps DPAPI over the file) — treat it as obfuscation, not protection, for sensitive data.
@@ -235,9 +234,9 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 ## MAUI Hosting Extensions
 * Module-based MAUI app configuration with `IMauiModule`
 * Static `ShinyHost.Services` for accessing the service provider anywhere
-* `IAppSupport` — device info (manufacturer, model, platform, idiom, OS version), browser/map launch, programmatic orientation lock, and live change events for orientation, culture, and time zone (native listeners on iOS/Android/macOS/Windows, polling fallback elsewhere)
-* `IAppStore` — cross-platform store version lookups + deep links for the Apple App Store and Mac App Store (iTunes Search API), Google Play (HTML scrape), Microsoft Store (DisplayCatalog API), and Flatpak/Snap on Linux
-* `IStartupService` — install/remove the app from the desktop OS "launch at login" list (Windows `Run` key, macOS `SMAppService` login items on both Mac Catalyst and AppKit, Linux XDG autostart or a systemd user/system unit — so a Linux app can start as a GUI app at login or as a headless service at boot)
+* `IAppSupport` — browser/map launch, programmatic orientation lock, and live orientation change events. Device info, culture and time zone (with change events) and opening the app's settings live on Shiny's `IPlatform` in Shiny.Core, implemented natively without MAUI
+* `IAppStore` moved to the `Shiny.AppStore` package (namespace `Shiny.AppStore`), registered with `builder.Services.AddAppStore(...)` — see https://shinylib.net/client/appstore/. Do not generate it against this library
+* Launch at login moved to Shiny.Core as `IAppStartupInstaller`, registered with `services.AddAppStartupInstaller(...)` ([docs](https://shinylib.net/client/core/app-startup-installer)) - never generate `IStartupService` / `AddStartupService` against this library
 * Desktop backends from [dotnet/maui-labs](https://github.com/dotnet/maui-labs): macOS AppKit (`net10.0-macos`) is served by this package, Linux GTK4 by the companion `Shiny.Extensions.MauiHosting.Linux` package
 * Opt-in registration: each capability is its own extension method so apps only pay for what they use
 
@@ -268,13 +267,7 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
    builder
        .UseMauiApp<App>()
        .AddInfrastructureModules(new MyMauiModule())   // your IMauiModule list
-       .AddAppSupport()                                // IAppSupport
-       .AddStartupService()                            // optional: IStartupService (desktop launch at login)
-       .AddAppStore(opts =>                            // optional: IAppStore + config
-       {
-           opts.AppleAppId = "1234567890";
-           opts.WindowsProductId = "9NBLGGH4NNS1";
-       });
+       .AddAppSupport();                               // IAppSupport
 
    return builder.Build();
    ```
@@ -286,17 +279,11 @@ public class MyVm(IAppSupport app)
 {
     void Hook()
     {
-        // Snapshot
-        var version = app.AppVersion;
-        var platform = app.Platform;            // "Android", "iOS", "WinUI", "macOS"
-        var idiom = app.DeviceIdiom;            // Phone, Tablet, Desktop, …
+        // Snapshot - device info, culture and time zone are on Shiny.Core's IPlatform
         var orientation = app.CurrentOrientation;
-        var culture = app.CurrentCulture;
 
         // Live updates
         app.OrientationChanged += (s, e) => { /* new DisplayOrientation */ };
-        app.CultureChanged += (s, e) => { /* new CultureInfo */ };
-        app.TimeZoneChanged += (s, e) => { /* new TimeZoneInfo */ };
 
         // Programmatic orientation lock - call once a page has appeared: UIKit ignores a change
         // made while a navigation transition is animating
@@ -316,115 +303,7 @@ public UIInterfaceOrientationMask GetSupportedInterfaceOrientations(UIApplicatio
     => Shiny.IosOrientationLock.Supported;
 ```
 
-#### IStartupService
-Installs the app into the operating system's startup (launch at login) list on desktop. Mobile platforms
-report `NotSupported` on every call, so the same code is safe to ship in a cross-platform app.
-
-```csharp
-public class StartupToggle(IStartupService startup)
-{
-    public async Task<string> Toggle(bool runAtLogin)
-    {
-        if (!startup.IsSupported)
-            return "Not a desktop platform";
-
-        var state = runAtLogin
-            ? await startup.Register()
-            : await startup.Unregister();
-
-        // Enabled | NotRegistered | DisabledByUser | DisabledByPolicy | RequiresApproval
-        if (state is StartupServiceState.RequiresApproval or StartupServiceState.DisabledByUser)
-            await startup.OpenSettings();   // the user has the final say in the OS UI
-
-        return state.ToString();
-    }
-}
-```
-
-| Platform | Mechanism | Notes |
-|----------|-----------|-------|
-| Windows (unpackaged, `WindowsPackageType=None`) | `HKCU\…\CurrentVersion\Run` | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry was switched off in Task Manager. `OpenSettings` opens `ms-settings:startupapps` |
-| macOS 13+ (Mac Catalyst **and** AppKit / `net10.0-macos`) | `SMAppService.MainApp` | Registers the running app bundle. First registration commonly returns `RequiresApproval` until the user approves it in System Settings > General > Login Items, which `OpenSettings` opens |
-| Linux | `~/.config/autostart/{Identifier}.desktop` by default, or a systemd unit (see `LinuxMode` below) | Honours `ExecutablePath`/`Arguments`. Reports `DisabledByUser` when the entry has `Hidden=true` / `X-GNOME-Autostart-enabled=false` (or the unit was `systemctl disable`d), `DisabledByPolicy` when the unit is masked |
-| Windows (MSIX packaged) | Not supported | MSIX virtualizes `HKCU` writes, so a `Run` entry would be invisible to the shell — packaged apps need a `windows.startupTask` manifest declaration driven through WinRT. `IsSupported` reports false |
-| iOS / Android / macOS 12 and earlier | Not supported | `IsSupported` is false and every call returns `NotSupported` |
-
-```csharp
-builder.AddStartupService(opts =>
-{
-    opts.Identifier = "MyApp";                 // Windows Run value name / Linux .desktop file name
-    opts.DisplayName = "My App";               // Linux desktop entry name
-    opts.Arguments.Add("--autostart");         // Windows + Linux (macOS can't pass arguments)
-});
-```
-
-On Linux, `LinuxMode` picks how the app is started — as a GUI app at login, or as a general service:
-
-| `LinuxStartupMode` | Kind | Written to | Starts |
-|--------------------|------|------------|--------|
-| `XdgAutostart` (default) | GUI | `~/.config/autostart/{Identifier}.desktop` | At desktop login, on any XDG desktop |
-| `SystemdGraphicalSession` | GUI | `~/.config/systemd/user/{Identifier}.service`, `WantedBy=graphical-session.target` | Once the desktop session is up; stopped when it ends. Needs a session that reaches `graphical-session.target` (GNOME, KDE Plasma) |
-| `SystemdUser` | Service | `~/.config/systemd/user/{Identifier}.service`, `WantedBy=default.target` | When the user's service manager starts — first login, or at boot with `loginctl enable-linger` |
-| `SystemdSystem` | Service | `/etc/systemd/system/{Identifier}.service`, `WantedBy=multi-user.target` | At boot, no login. `Register`/`Unregister` require root |
-
-The systemd modes add crash restarts (`RestartOnFailure`, on by default), journald logging
-(`journalctl [--user] -u {Identifier}`) and `systemctl` control. `Register` runs `daemon-reload` + `enable`
-but never starts a second copy — the unit runs from the next login/boot. The `Identifier` must be a valid
-unit name (letters, digits, `:_.-`). The systemd modes report `IsSupported = false` on a non-systemd host,
-without a user service manager, or inside a Flatpak/Snap sandbox.
-
-The service is registered from plain `IServiceCollection`, so a Generic Host worker can install itself:
-
-```csharp
-services.AddStartupService(opts =>
-{
-    opts.Identifier = "my-worker";
-    opts.LinuxMode = LinuxStartupMode.SystemdSystem;
-    opts.LinuxServiceUser = "myworker";     // User= (defaults to root)
-    // opts.WorkingDirectory defaults to AppContext.BaseDirectory
-});
-
-// e.g. `sudo ./my-worker --install`
-if (args.Contains("--install"))
-    await host.Services.GetRequiredService<IStartupService>().Register();
-```
-
-A plain AppKit app with no `MauiAppBuilder` can register against the service collection instead — the
-package ships a `net10.0-macos` asset for exactly this:
-
-```csharp
-services.AddStartupService(opts => opts.Identifier = "MyApp");
-```
-
-> `IStartupService` doesn't touch MAUI Essentials, so it works on the AppKit head with no extra setup.
-> `IAppSupport` and `IAppStore` do — see the desktop backend section below.
-
-#### IAppStore
-```csharp
-public class UpdateChecker(IAppStore store)
-{
-    public async Task Check()
-    {
-        var result = await store.GetCurrent();
-        if (result?.NeedsUpdate == true)
-            await store.OpenStore();
-    }
-
-    public Task Review() => store.OpenReviewPage();
-}
-```
-
-| Platform | Source of the published version | Deep link |
-|----------|--------------------------------|-----------|
-| iOS / Mac Catalyst | iTunes Search API by bundle ID | `itms-apps://` |
-| macOS (AppKit) | iTunes Search API by bundle ID, scoped to `entity=macSoftware` | `macappstore://` |
-| Android | Play Store listing scrape | `market://` |
-| Windows | Microsoft Store DisplayCatalog API | `ms-windows-store://` |
-| Linux (`Shiny.Extensions.MauiHosting.Linux`) | `flatpak remote-info` against the remote the app was installed from, or `snap info` for the tracked channel | `appstream://` into GNOME Software / Plasma Discover / Snap Store |
-
-`RequestReview` shows the OS's own in-app prompt where one exists (StoreKit on iOS / Mac Catalyst / macOS,
-`StoreContext` on Windows). Android and Linux have no dependency-free in-app prompt, so both fall back to
-`OpenReviewPage`.
+> `IAppSupport` needs extra setup on the desktop heads — see the desktop backend section below.
 
 ### Desktop backends (macOS AppKit + Linux GTK4)
 
@@ -433,10 +312,9 @@ ships both as experimental preview packages, and this library supports them.
 
 #### macOS (AppKit)
 
-The `net10.0-macos` asset of `Shiny.Extensions.MauiHosting` carries the full surface — `IAppSupport`,
-`IAppStore`, and `IStartupService`. On that head MAUI Essentials resolves its platform-neutral asset,
+The `net10.0-macos` asset of `Shiny.Extensions.MauiHosting` carries `IAppSupport`. On that head MAUI Essentials resolves its platform-neutral asset,
 where every member throws `NotImplementedInReferenceAssembly`, so the package depends on
-`Microsoft.Maui.Platforms.MacOS.Essentials` and `AddAppSupport()`/`AddAppStore()` call `AddMacOSEssentials()`
+`Microsoft.Maui.Platforms.MacOS.Essentials` and `AddAppSupport()` calls `AddMacOSEssentials()`
 for you.
 
 ```csharp
@@ -447,14 +325,12 @@ var builder = MauiApp.CreateBuilder();
 builder
     .UseMauiAppMacOS<App>()
     .AddInfrastructureModules(new MyMauiModule())
-    .AddAppSupport()      // wires the AppKit Essentials implementations in
-    .AddAppStore(opts => opts.AppleAppId = "1234567890")
-    .AddStartupService();
+    .AddAppSupport();     // wires the AppKit Essentials implementations in
 
 return builder.Build();
 ```
 
-Culture and time-zone changes come through `NSNotificationCenter`, and orientation through
+Orientation comes through
 `DeviceDisplay.MainDisplayInfoChanged` (`NSApplication.DidChangeScreenParametersNotification`).
 `SetOrientation`/`ResetOrientation` return false — AppKit windows don't rotate.
 
@@ -473,32 +349,26 @@ var builder = MauiApp.CreateBuilder();
 builder
     .UseMauiAppLinuxGtk4<App>()
     .AddInfrastructureModules(new MyMauiModule())
-    .AddLinuxAppSupport()                            // IAppSupport over the GTK4 Essentials services
-    .AddLinuxAppStore("org.example.MyApp")           // IAppStore over Flatpak / Snap
-    .AddStartupService();                            // XDG autostart (or a systemd unit via LinuxMode), from the base package
+    .AddLinuxAppSupport();                           // IAppSupport over the GTK4 Essentials services
 
 return builder.Build();
 ```
 
-`AddLinuxAppSupport()`/`AddLinuxAppStore()` are named apart from the base `AddAppSupport()`/`AddAppStore()`
-on purpose — both packages put their extensions on `MauiAppBuilder` in the `Shiny` namespace, and only one
-of each pair works on Linux.
+`AddLinuxAppSupport()` is named apart from the base `AddAppSupport()` on purpose — both packages put their
+extensions on `MauiAppBuilder` in the `Shiny` namespace, and only one of the two works on Linux.
 
 | Capability | Linux behaviour |
 |------------|-----------------|
-| Device info / browser / map | The GTK4 Essentials services (`IAppInfo`, `IDeviceInfo`, `IBrowser` and `IMap` over `xdg-open`) |
-| Time zone changes | inotify on `/etc/localtime`, which `systemd-timedated` replaces on a zone change |
-| Culture changes | Polled. A Linux locale switch only takes effect for the *next* login, so a running process never sees one from the OS |
+| Browser / map | The GTK4 Essentials services (`IBrowser` and `IMap` over `xdg-open`) |
 | Orientation | Reported from the GDK monitor geometry; `SetOrientation`/`ResetOrientation` return false |
-| App store | `flatpak remote-info` / `snap info`. Set `AppStoreOptions.LinuxAppId` when the app isn't running from a Flatpak or Snap sandbox — there's nothing to auto-detect from |
 
 > Both backends are `0.1.0-preview` packages from dotnet/maui-labs and are not covered by the .NET MAUI
 > support policy. `samples/Sample.Maui.MacOS` and `samples/Sample.Maui.Linux` are runnable heads of the
 > shared sample app for each.
 
 ## Blazor WebAssembly Hosting Extensions
-* `IAppSupport` for Blazor WebAssembly — app version, browser user-agent (raw string + best-effort parsed browser `Version`), screen and viewport dimensions, plus live culture / time-zone change events
-* Reads browser state synchronously through `IJSInProcessRuntime` (same approach as `Shiny.Extensions.Stores.Web`)
+* `IAppSupport` for Blazor WebAssembly — screen and viewport dimensions. App version, the browser user agent and parsed browser version, and culture / time-zone change events are on Shiny.Core's `IPlatform` / `NetPlatform`
+* Reads browser state synchronously through `IJSInProcessRuntime` (same approach as the `Shiny.Extensions.Stores` localStorage store)
 
 ### Setup
 1. Install the NuGet package `Shiny.Extensions.BlazorHosting`
@@ -506,11 +376,11 @@ of each pair works on Linux.
    ```html
    <script src="_content/Shiny.Extensions.BlazorHosting/shiny-appsupport.js"></script>
    ```
-3. Register at startup, passing the head app's version (no reflection — use the source-generated `ThisAssembly`):
+3. Register at startup:
    ```csharp
    using Shiny;
 
-   builder.Services.AddAppSupport(ThisAssembly.AssemblyVersion);
+   builder.Services.AddAppSupport();
    ```
 4. Inject `IAppSupport` anywhere:
    ```csharp
@@ -518,16 +388,8 @@ of each pair works on Linux.
    {
        void Hook()
        {
-           // Snapshot
-           var version = app.AppVersion;
-           var ua = app.UserAgent;
-           var browser = app.UserAgentVersion;
            var (w, h) = (app.BrowserWidth, app.BrowserHeight);   // viewport — read live
            var (sw, sh) = (app.ScreenWidth, app.ScreenHeight);   // physical screen
-
-           // Live updates
-           app.CultureChanged += (s, e) => { /* new CultureInfo */ };
-           app.TimeZoneChanged += (s, e) => { /* new TimeZoneInfo */ };
        }
    }
    ```
@@ -542,9 +404,8 @@ of each pair works on Linux.
 |---------|-------------|
 | `Shiny.Extensions.DependencyInjection` | Attribute-driven DI registration with source generators |
 | `Shiny.Extensions.Serialization` | Centralized AOT-safe JSON serializer + `[ShinyJsonContext]`/`[ShinyJsonInclude]` source generator |
-| `Shiny.Extensions.Stores` | Cross-platform key/value store abstraction |
-| `Shiny.Extensions.Stores.Web` | Blazor WebAssembly localStorage/sessionStorage |
+| `Shiny.Extensions.Stores` | Cross-platform key/value store abstraction (includes Blazor WebAssembly localStorage) |
 | `Shiny.Extensions.WebHosting` | ASP.NET modular web hosting with `IWebModule` |
 | `Shiny.Extensions.MauiHosting` | MAUI modular hosting with `IMauiModule` and platform lifecycle hooks (includes the macOS AppKit head) |
-| `Shiny.Extensions.MauiHosting.Linux` | `IAppSupport` and Flatpak/Snap `IAppStore` for the MAUI Linux GTK4 backend |
-| `Shiny.Extensions.BlazorHosting` | Blazor WebAssembly `IAppSupport` — browser/device info and culture/time-zone change events |
+| `Shiny.Extensions.MauiHosting.Linux` | `IAppSupport` for the MAUI Linux GTK4 backend |
+| `Shiny.Extensions.BlazorHosting` | Blazor WebAssembly `IAppSupport` — screen and viewport dimensions |

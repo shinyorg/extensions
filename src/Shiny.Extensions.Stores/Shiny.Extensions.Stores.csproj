@@ -1,14 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Description>Store anything in a key/value store - Abstractions for iOS, Android and Windows preferences/secure storage</Description>
         <TargetFrameworks>$(BaseTargetFramework)</TargetFrameworks>
         <TargetFrameworks>$(TargetFrameworks);$(BaseTargetFramework)-android</TargetFrameworks>
         <TargetFrameworks Condition="'$(SupportsAppleTargets)' == 'true'">$(TargetFrameworks);$(BaseTargetFramework)-ios</TargetFrameworks>
         <TargetFrameworks Condition="'$(SupportsAppleTargets)' == 'true'">$(TargetFrameworks);$(BaseTargetFramework)-maccatalyst</TargetFrameworks>
         <TargetFrameworks Condition="'$(SupportsAppleTargets)' == 'true'">$(TargetFrameworks);$(BaseTargetFramework)-macos</TargetFrameworks>
         <TargetFrameworks Condition="'$(OS)' == 'Windows'">$(TargetFrameworks);$(BaseTargetFramework)-windows</TargetFrameworks>
-        <Description>Store anything in a key/value store - Abstractions for iOS, Android and Windows preferences/secure storage</Description>
+        <Description>Store anything in a key/value store - iOS, Android, macOS and Windows preferences/secure storage, plus Blazor WebAssembly localStorage</Description>
         <RootNamespace>Shiny</RootNamespace>
         <PackageTags>shiny keyvaluepair stores storage sourcegeneration</PackageTags>
     </PropertyGroup>
@@ -20,5 +19,13 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Shiny.Extensions.Serialization\Shiny.Extensions.Serialization.csproj"/>
+    </ItemGroup>
+
+    <!-- Blazor WebAssembly localStorage stores ship in the plain (non-platform) TFM only -->
+    <ItemGroup Condition="'$(TargetFramework)' == '$(BaseTargetFramework)'">
+        <PackageReference Include="Microsoft.JSInterop"/>
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' != '$(BaseTargetFramework)'">
+        <Compile Remove="Web\**"/>
     </ItemGroup>
 </Project>

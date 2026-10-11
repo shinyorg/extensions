@@ -34,7 +34,7 @@ Every shipping library has a documentation area and (almost always) a local skil
 | `Shiny.Extensions.DependencyInjection` | `di/` | `shiny-di` |
 | `Shiny.Extensions.Reflector` | `reflector/` | `shiny-reflector` |
 | `Shiny.Extensions.Serialization` | `serialization/` | `shiny-serialization` |
-| `Shiny.Extensions.Stores` / `.Stores.Web` | `stores/` | `shiny-stores` |
+| `Shiny.Extensions.Stores` | `stores/` | `shiny-stores` |
 | `Shiny.Extensions.WebHosting` | `webhost/` | `shiny-web-hosting` |
 | `Shiny.Extensions.MauiHosting` | `mauihost/` | `shiny-maui-hosting` |
 | `Shiny.Extensions.BlazorHosting` | `blazorhost/` | `shiny-blazor-hosting` |

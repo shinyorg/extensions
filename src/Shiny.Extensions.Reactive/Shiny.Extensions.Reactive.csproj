@@ -8,6 +8,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Shiny.Extensions.Reflector\Shiny.Extensions.Reflector.csproj" />
+        <ProjectReference Include="..\Shiny.Extensions.Reflector\Shiny.Extensions.Reflector.csproj"/>
     </ItemGroup>
 </Project>

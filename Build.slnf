@@ -10,7 +10,6 @@
             "src\\Shiny.Extensions.Serialization.SourceGenerators\\Shiny.Extensions.Serialization.SourceGenerators.csproj",
             "src\\Shiny.Extensions.Serialization\\Shiny.Extensions.Serialization.csproj",
             "src\\Shiny.Extensions.Stores\\Shiny.Extensions.Stores.csproj",
-            "src\\Shiny.Extensions.Stores.Web\\Shiny.Extensions.Stores.Web.csproj",
             "src\\Shiny.Extensions.WebHosting\\Shiny.Extensions.WebHosting.csproj",
             "src\\Shiny.Extensions.MauiHosting\\Shiny.Extensions.MauiHosting.csproj",
             "src\\Shiny.Extensions.MauiHosting.Linux\\Shiny.Extensions.MauiHosting.Linux.csproj",

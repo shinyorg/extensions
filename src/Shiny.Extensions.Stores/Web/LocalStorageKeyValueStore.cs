@@ -5,25 +5,24 @@ namespace Shiny.Extensions.Stores.Web;
 
 /// <summary>
 /// <see cref="IKeyValueStore"/> implementation backed by the browser's <c>window.localStorage</c>.
-/// Requires <c>_content/Shiny.Extensions.Stores.Web/shiny-storage.js</c> to be loaded via a
-/// &lt;script&gt; tag in index.html before Shiny services are used.
+/// Blazor WebAssembly only - requires <see cref="IJSInProcessRuntime"/>.
 /// </summary>
 public class LocalStorageKeyValueStore(IJSRuntime jsRuntime, ISerializer serializer) : IKeyValueStore
 {
     const string KeyPrefix = "shiny:kvs:settings:";
-    readonly IJSInProcessRuntime js = (IJSInProcessRuntime)jsRuntime;
+    readonly LocalStorage storage = new(jsRuntime);
 
 
     public bool IsReadOnly => false;
 
 
     public bool Contains(string key)
-        => this.js.Invoke<bool>("shinyLocalStorage.containsKey", this.Format(key));
+        => this.storage.ContainsKey(this.Format(key));
 
 
     public T? Get<T>(string key)
     {
-        var json = this.js.Invoke<string?>("shinyLocalStorage.getItem", this.Format(key));
+        var json = this.storage.GetItem(this.Format(key));
         if (json == null)
             return default;
 
@@ -40,16 +39,16 @@ public class LocalStorageKeyValueStore(IJSRuntime jsRuntime, ISerializer seriali
         }
 
         var json = serializer.Serialize<T>(value);
-        this.js.InvokeVoid("shinyLocalStorage.setItem", this.Format(key), json);
+        this.storage.SetItem(this.Format(key), json);
     }
 
 
     public bool Remove(string key)
-        => this.js.Invoke<bool>("shinyLocalStorage.removeItem", this.Format(key));
+        => this.storage.RemoveItem(this.Format(key));
 
 
     public void Clear()
-        => this.js.Invoke<int>("shinyLocalStorage.removeKeys", KeyPrefix);
+        => this.storage.RemoveKeys(KeyPrefix);
 
 
     string Format(string key) => $"{KeyPrefix}{key}";

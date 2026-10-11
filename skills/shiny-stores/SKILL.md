@@ -5,12 +5,13 @@ auto_invoke: true
 triggers:
   - IKeyValueStore
   - AddShinyStores
-  - AddShinyWebAssemblyStores
+  - AddLocalStorageKeyValueStore
+  - AddLocalStorageRepository
+  - LocalStorageKeyValueStore
   - StoreKeys
   - Shiny.Stores
   - BindAttribute
   - Shiny.Extensions.Stores
-  - Shiny.Extensions.Stores.Web
 ---
 
 # Shiny Stores Skill
@@ -29,7 +30,7 @@ Invoke this skill when the user wants to:
 
 **Documentation**: https://shinylib.net/extensions/stores/
 **Repository**: https://github.com/shinyorg/Shiny.Extensions
-**Packages**: `Shiny.Extensions.Stores`, `Shiny.Extensions.Stores.Web`
+**Package**: `Shiny.Extensions.Stores` (Blazor WebAssembly localStorage support is built in — the former `Shiny.Extensions.Stores.Web` package was merged into it and should not be referenced)
 
 ## Built-in Store Keys
 
@@ -74,8 +75,15 @@ services.AddShinyStores();
 
 // Blazor WebAssembly — localStorage (still needs UseShinyStores after Build,
 // because IJSRuntime is only available post-build)
-services.AddShinyWebAssemblyStores();
+services.AddLocalStorageKeyValueStore();
+services.AddLocalStorageRepository();   // optional IRepository over localStorage
 ```
+
+The localStorage store/repository live in the plain `net10.0` asset of `Shiny.Extensions.Stores`
+and call `window.localStorage` directly through `IJSInProcessRuntime` — **no `<script>` tag is
+required** (do not add `_content/Shiny.Extensions.Stores.Web/shiny-storage.js`; it no longer exists).
+They only work in Blazor WebAssembly — constructing them under Blazor Server/Hybrid throws because
+`IJSRuntime` is not in-process there.
 
 On mobile/desktop you **do not need** a post-build `UseShinyStores()` call.
 `Shiny.Stores.Default` / `Shiny.Stores.Secure` are self-bootstrapping: on first
@@ -192,7 +200,7 @@ store.IncrementValue(key);              // Thread-safe integer increment
 
 ## Code Generation Instructions
 
-- Use `AddShinyStores()` for mobile/desktop, `AddShinyWebAssemblyStores()` for Blazor
+- Use `AddShinyStores()` for mobile/desktop, `AddLocalStorageKeyValueStore()` (+ `UseShinyStores()` after build) for Blazor WebAssembly
 - For persistent settings, prefer `[Singleton]` + `[Bind]` partial properties over manual `Set`/`Get` calls
 - The class with `[Bind]` properties must be `partial`; properties must also be `partial`
 - For sensitive data (tokens, credentials), pass `"secure"` to `[Bind("secure")]`
