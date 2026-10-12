@@ -14,7 +14,7 @@ Guidance for Claude Code when working in this repository.
 
 - `src/` — shipping libraries (each has a matching `*.SourceGenerators` project where relevant)
 - `tests/` — xUnit test projects (`*.Tests`) plus Reflector benchmarks
-- `samples/` — runnable samples (`Sample`, `Sample.Maui`, `Sample.Web`, `Sample.CopilotConsole`, `Reflector`)
+- `samples/` — runnable samples (`Sample`, `Sample.Maui`, `Sample.CopilotConsole`, `Reflector`)
 - `skills/` — Claude Code skills shipped by this repo's plugin (`.claude-plugin/`)
 - `readme.md` — the NuGet/GitHub readme (also packed via `PackageReadmeFile`)
 
@@ -35,7 +35,6 @@ Every shipping library has a documentation area and (almost always) a local skil
 | `Shiny.Extensions.Reflector` | `reflector/` | `shiny-reflector` |
 | `Shiny.Extensions.Serialization` | `serialization/` | `shiny-serialization` |
 | `Shiny.Extensions.Stores` | `stores/` | `shiny-stores` |
-| `Shiny.Extensions.WebHosting` | `webhost/` | `shiny-web-hosting` |
 | `Shiny.Extensions.MauiHosting` | `mauihost/` | `shiny-maui-hosting` |
 | `Shiny.Extensions.BlazorHosting` | `blazorhost/` | `shiny-blazor-hosting` |
 | `Shiny.Extensions.Reactive` | — | — |

@@ -15,7 +15,6 @@
     </Folder>
     <Folder Name="/tests/">
         <Project Path="samples/Sample.CopilotConsole/Sample.CopilotConsole.csproj" />
-        <Project Path="samples/Sample.Web/Sample.Web.csproj" />
         <Project Path="samples/Reflector/Samples.Reflector.csproj" />
         <Project Path="samples\Sample\Sample.csproj" />
         <Project Path="tests\Shiny.Extensions.DependencyInjection.Tests\Shiny.Extensions.DependencyInjection.Tests.csproj" />
@@ -32,6 +31,5 @@
     <Project Path="src\Shiny.Extensions.DependencyInjection\Shiny.Extensions.DependencyInjection.csproj" />
     <Project Path="src\Shiny.Extensions.Reflector.SourceGenerators\Shiny.Extensions.Reflector.SourceGenerators.csproj" />
     <Project Path="src\Shiny.Extensions.Reflector\Shiny.Extensions.Reflector.csproj" />
-    <Project Path="src\Shiny.Extensions.WebHosting\Shiny.Extensions.WebHosting.csproj" />
     <Project Path="src\Shiny.Extensions.Stores\Shiny.Extensions.Stores.csproj" />
 </Solution>

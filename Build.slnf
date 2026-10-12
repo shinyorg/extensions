@@ -9,8 +9,7 @@
             "src\\Shiny.Extensions.Reflector\\Shiny.Extensions.Reflector.csproj",
             "src\\Shiny.Extensions.Serialization.SourceGenerators\\Shiny.Extensions.Serialization.SourceGenerators.csproj",
             "src\\Shiny.Extensions.Serialization\\Shiny.Extensions.Serialization.csproj",
-            "src\\Shiny.Extensions.Stores\\Shiny.Extensions.Stores.csproj",
-            "src\\Shiny.Extensions.WebHosting\\Shiny.Extensions.WebHosting.csproj"
+            "src\\Shiny.Extensions.Stores\\Shiny.Extensions.Stores.csproj"
         ]
     }
 }

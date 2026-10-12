@@ -198,39 +198,6 @@ var theme = Shiny.Stores.Default.Get<string>("theme");
 > [!NOTE]
 > On Apple platforms the default store is scoped to the app's **own** preferences domain. `NSUserDefaults.StandardUserDefaults` is a search list — it also resolves through the global domain and through defaults any linked framework registered — so `Contains`/`Get` deliberately ask the app's persistent domain instead. Without that, an ordinary key name (`AutoRecord`, `UseMetric`, `Enabled`) can read back as *present* having never been written, and `Get(key, defaultValue)` would hand back that foreign value instead of your default.
 
-## Web Hosting Extensions
-* Merges service container build and post build scenarios into a single class using `IWebModule`
-
-### Setup
-1. Install the NuGet package `Shiny.Extensions.WebHosting`
-2. Add a web module by implementing `IWebModule`:
-   ```csharp
-   using Shiny;
-
-   public class MyWebModule : IWebModule
-   {
-       public void Add(WebApplicationBuilder builder)
-       {
-           // Register your services here
-       }
-
-       public void Use(WebApplication app)
-       {
-           // Configure your middleware/endpoints here
-       }
-   }
-   ```
-3. In your application hosting startup, add the following:
-   ```csharp
-   using Shiny;
-
-   var builder = WebApplication.CreateBuilder(args);
-   builder.AddInfrastructureModules(new MyWebModule());
-
-   var app = builder.Build();
-   app.UseInfrastructureModules();
-   ```
-
 ## MAUI Hosting Extensions
 * Module-based MAUI app configuration with `IMauiModule`
 * Static `ShinyHost.Services` for accessing the service provider anywhere
@@ -405,7 +372,6 @@ extensions on `MauiAppBuilder` in the `Shiny` namespace, and only one of the two
 | `Shiny.Extensions.DependencyInjection` | Attribute-driven DI registration with source generators |
 | `Shiny.Extensions.Serialization` | Centralized AOT-safe JSON serializer + `[ShinyJsonContext]`/`[ShinyJsonInclude]` source generator |
 | `Shiny.Extensions.Stores` | Cross-platform key/value store abstraction (includes Blazor WebAssembly localStorage) |
-| `Shiny.Extensions.WebHosting` | ASP.NET modular web hosting with `IWebModule` |
 | `Shiny.Extensions.MauiHosting` | MAUI modular hosting with `IMauiModule` and platform lifecycle hooks (includes the macOS AppKit head) |
 | `Shiny.Extensions.MauiHosting.Linux` | `IAppSupport` for the MAUI Linux GTK4 backend |
 | `Shiny.Extensions.BlazorHosting` | Blazor WebAssembly `IAppSupport` — screen and viewport dimensions |
