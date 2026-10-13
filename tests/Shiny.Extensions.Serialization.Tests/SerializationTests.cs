@@ -108,6 +108,31 @@ public class SerializationTests
     }
 
 
+    [Fact(DisplayName = "Json - primitives round-trip without any registered context")]
+    public void Primitives_RoundTrip_WithoutContext()
+    {
+        Json.Default.Deserialize<string>(Json.Default.Serialize("token")).ShouldBe("token");
+        Json.Default.Deserialize<int>(Json.Default.Serialize(42)).ShouldBe(42);
+        Json.Default.Deserialize<bool>(Json.Default.Serialize(true)).ShouldBeTrue();
+        Json.Default.Deserialize<int?>(Json.Default.Serialize<int?>(null)).ShouldBeNull();
+
+        var id = Guid.NewGuid();
+        Json.Default.Deserialize<Guid>(Json.Default.Serialize(id)).ShouldBe(id);
+
+        var now = DateTimeOffset.UtcNow;
+        Json.Default.Deserialize<DateTimeOffset>(Json.Default.Serialize(now)).ShouldBe(now);
+    }
+
+
+    [Fact(DisplayName = "Json - a standalone DefaultJsonSerializer handles primitives")]
+    public void Primitives_StandaloneSerializer()
+    {
+        var serializer = new Shiny.Impl.DefaultJsonSerializer();
+        serializer.Deserialize<string>(serializer.Serialize("value")).ShouldBe("value");
+        serializer.Deserialize<double>(serializer.SerializeToUtf8Bytes(1.5)).ShouldBe(1.5);
+    }
+
+
     // ---------- UTF-8 byte overloads ----------
 
     [Fact(DisplayName = "Json - SerializeToUtf8Bytes round-trips via Deserialize(ReadOnlySpan<byte>)")]

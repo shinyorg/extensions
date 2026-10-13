@@ -94,6 +94,7 @@ namespace Sample
 ## Serialization
 * Centralized `ISerializer` backed by source-generated `JsonSerializerContext`s, no reflection, AOT-clean
 * `Shiny.Json` static accessor — self-bootstrapping, sibling to `Shiny.Stores` for mobile cold-start
+* Primitives and common BCL value types (`string`, `bool`, numerics, `decimal`, `char`, `Guid`, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`, `Uri`, `byte[]` and their nullable forms) work out of the box — no context needed. Registered contexts still take precedence
 * `[ShinyJsonContext]` on any user-declared `JsonSerializerContext` partial → source generator emits a `[ModuleInitializer]` that auto-registers it. No `services.AddJsonContext(...)` boilerplate needed
 * `[ShinyJsonInclude]` on a type (or `[assembly: ShinyJsonInclude(typeof(T))]`) → AOT-safe collection wrappers for `List<T>`, `T[]`, `IEnumerable<T>`, `IReadOnlyList<T>`, `IList<T>`, `ICollection<T>`, `IAsyncEnumerable<T>` — solves the "inline `[JsonConverter]` works but `List<T>` fails" trap
 * Multiple contributing libraries chain cleanly via `TypeInfoResolverChain`. Element types from one context compose with collection wrappers from another

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -85,8 +86,13 @@ public class DefaultJsonSerializer : ISerializer
     }
 
 
+    readonly ConcurrentDictionary<Type, JsonTypeInfo> builtIns = new();
+
     JsonTypeInfo GetRequiredTypeInfo(Type type)
     {
+        if (this.builtIns.TryGetValue(type, out var builtIn))
+            return builtIn;
+
         JsonTypeInfo? typeInfo = null;
         try
         {
@@ -94,6 +100,20 @@ public class DefaultJsonSerializer : ISerializer
         }
         catch (InvalidOperationException) { }
         catch (NotSupportedException) { }
+
+        // Registered contexts/resolvers win; primitives (string, int, bool, Guid, DateTime, ...) fall
+        // back to the built-in context so they work without the app registering anything.
+        if (typeInfo == null)
+        {
+            // A standalone serializer with nothing registered has no resolver at all, and its options
+            // cannot be frozen without one — give it the built-in context as its resolver.
+            if (this.Options.TypeInfoResolver is null && !this.Options.IsReadOnly)
+                this.Options.TypeInfoResolverChain.Add(BuiltInJsonContext.Default);
+
+            typeInfo = ((IJsonTypeInfoResolver)BuiltInJsonContext.Default).GetTypeInfo(type, this.Options);
+            if (typeInfo != null)
+                typeInfo = this.builtIns.GetOrAdd(type, typeInfo);
+        }
 
         if (typeInfo == null)
             throw new InvalidOperationException(

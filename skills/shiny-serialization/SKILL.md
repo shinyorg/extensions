@@ -31,7 +31,7 @@ Invoke this skill when the user wants to:
 **Repository**: https://github.com/shinyorg/extensions
 **Package**: `Shiny.Extensions.Serialization`
 
-`Shiny.Extensions.Serialization` ships a runtime + Roslyn source generator. The runtime owns one shared `JsonSerializerOptions` whose `TypeInfoResolverChain` collects every contributed `JsonSerializerContext` and custom resolver. The generator emits `[ModuleInitializer]`s that auto-register user contexts at load time, and AOT-safe collection wrappers for opted-in types.
+`Shiny.Extensions.Serialization` ships a runtime + Roslyn source generator. The runtime owns one shared `JsonSerializerOptions` whose `TypeInfoResolverChain` collects every contributed `JsonSerializerContext` and custom resolver. Primitives and common BCL value types (`string`, `bool`, numerics, `decimal`, `char`, `Guid`, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`, `Uri`, `byte[]` and their nullable forms) work out of the box — no context needed. Registered contexts still take precedence (via a built-in source-generated fallback), so storing a plain `string` token in `Stores.Secure` never needs a context. Only your own DTOs/collections need `[JsonSerializable]`. The generator emits `[ModuleInitializer]`s that auto-register user contexts at load time, and AOT-safe collection wrappers for opted-in types.
 
 ## Core Pieces
 

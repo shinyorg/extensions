@@ -48,6 +48,8 @@ Stores are registered as **keyed** singletons in DI using `StoreKeys` constants:
 | `StoreKeys.Secure` ("secure") | Windows | DPAPI (packaged: ApplicationData; unpackaged: over file) |
 | `StoreKeys.Secure` ("secure") | Linux / other desktop | `FileKeyValueStore` (JSON file, **not encrypted**) |
 
+Values that aren't natively stored by the platform go through the shared `Shiny.Json` serializer (the secure stores and localStorage serialize every value). Primitives (`string`, `bool`, numerics, `Guid`, `DateTime`, etc.) work with no setup; your own complex types need a registered `JsonSerializerContext` (e.g. `[ShinyJsonContext]`).
+
 `net10.0-macos` (plain macOS desktop apps) uses Foundation NSUserDefaults + Security.framework
 Keychain — the same code as iOS/Mac Catalyst — so it gets **real** secure storage, not the plaintext
 file fallback. Any target that resolves the base `net10.0` asset (Linux, unpackaged Windows, other
