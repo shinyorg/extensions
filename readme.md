@@ -376,3 +376,7 @@ extensions on `MauiAppBuilder` in the `Shiny` namespace, and only one of the two
 | `Shiny.Extensions.MauiHosting` | MAUI modular hosting with `IMauiModule` and platform lifecycle hooks (includes the macOS AppKit head) |
 | `Shiny.Extensions.MauiHosting.Linux` | `IAppSupport` for the MAUI Linux GTK4 backend |
 | `Shiny.Extensions.BlazorHosting` | Blazor WebAssembly `IAppSupport` — screen and viewport dimensions |
+
+## Commercial Support
+
+Shipping this to production? [ShinySoft Technologies](https://shinysoft.biz), the company that builds and maintains the Shiny libraries, offers priority issue response, support agreements, architecture reviews and private office hours. See [Commercial Support](https://shinylib.net/foundation/support/?utm_source=github&utm_medium=readme#commercial-support) or [get in touch](https://shinysoft.biz/contact?utm_source=github&utm_medium=readme). Community support through GitHub issues and discussions stays free.
