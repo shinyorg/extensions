@@ -20,12 +20,30 @@ public class DefaultJsonSerializer : ISerializer
     };
 
 
+    public DefaultJsonSerializer()
+    {
+        // The built-in context stays last on the options' own chain. Registered contexts still win, and a
+        // nullable primitive works: Guid?'s generated converter looks up Guid through these options, so
+        // resolving Guid? from the built-in context directly is not enough on its own.
+        this.Options.TypeInfoResolverChain.Add(BuiltInJsonContext.Default);
+    }
+
+
     /// <summary>
     /// Registers a <see cref="JsonSerializerContext"/> so its types can be
     /// serialized/deserialized in an AOT-compatible way.
     /// </summary>
     public void AddContext(JsonSerializerContext context)
-        => this.Options.TypeInfoResolverChain.Add(context);
+        => this.AddResolver(context);
+
+
+    /// <summary>Adds a resolver ahead of the built-in primitives, so it takes precedence over them.</summary>
+    internal void AddResolver(IJsonTypeInfoResolver resolver)
+    {
+        var chain = this.Options.TypeInfoResolverChain;
+        var builtIn = chain.IndexOf(BuiltInJsonContext.Default);
+        chain.Insert(builtIn < 0 ? chain.Count : builtIn, resolver);
+    }
 
 
     public T Deserialize<T>(string value)
@@ -101,15 +119,10 @@ public class DefaultJsonSerializer : ISerializer
         catch (InvalidOperationException) { }
         catch (NotSupportedException) { }
 
-        // Registered contexts/resolvers win; primitives (string, int, bool, Guid, DateTime, ...) fall
-        // back to the built-in context so they work without the app registering anything.
+        // The built-in context is already on the chain; this only catches a configurator that replaced
+        // Options.TypeInfoResolver outright, so primitives still work without the app registering anything.
         if (typeInfo == null)
         {
-            // A standalone serializer with nothing registered has no resolver at all, and its options
-            // cannot be frozen without one — give it the built-in context as its resolver.
-            if (this.Options.TypeInfoResolver is null && !this.Options.IsReadOnly)
-                this.Options.TypeInfoResolverChain.Add(BuiltInJsonContext.Default);
-
             typeInfo = ((IJsonTypeInfoResolver)BuiltInJsonContext.Default).GetTypeInfo(type, this.Options);
             if (typeInfo != null)
                 typeInfo = this.builtIns.GetOrAdd(type, typeInfo);

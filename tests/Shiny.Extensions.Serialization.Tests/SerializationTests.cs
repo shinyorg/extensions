@@ -124,6 +124,43 @@ public class SerializationTests
     }
 
 
+    // A nullable's generated converter asks the options for its underlying type, so Guid? only works when
+    // the built-in context is on the options' own resolver chain - resolving it directly is not enough.
+    [Fact(DisplayName = "Json - nullable primitives with a value round-trip without any registered context")]
+    public void NullablePrimitives_WithValue_RoundTrip_WithoutContext()
+    {
+        Guid? id = Guid.NewGuid();
+        Json.Default.Deserialize<Guid?>(Json.Default.Serialize(id)).ShouldBe(id);
+
+        DateTimeOffset? now = DateTimeOffset.UtcNow;
+        Json.Default.Deserialize<DateTimeOffset?>(Json.Default.Serialize(now)).ShouldBe(now);
+
+        DateTime? date = new DateTime(2026, 11, 17, 9, 30, 0, DateTimeKind.Utc);
+        Json.Default.Deserialize<DateTime?>(Json.Default.Serialize(date)).ShouldBe(date);
+
+        TimeSpan? span = TimeSpan.FromMinutes(90);
+        Json.Default.Deserialize<TimeSpan?>(Json.Default.Serialize(span)).ShouldBe(span);
+
+        int? number = 42;
+        Json.Default.Deserialize<int?>(Json.Default.Serialize(number)).ShouldBe(number);
+
+        double? fraction = 1.5;
+        Json.Default.Deserialize<double?>(Json.Default.Serialize(fraction)).ShouldBe(fraction);
+    }
+
+
+    [Fact(DisplayName = "Json - a standalone DefaultJsonSerializer handles nullable primitives alongside a registered context")]
+    public void NullablePrimitives_StandaloneSerializer_WithContext()
+    {
+        var serializer = new Shiny.Impl.DefaultJsonSerializer();
+        serializer.AddContext(StandaloneJsonContext.Default);
+
+        Guid? id = Guid.NewGuid();
+        serializer.Deserialize<Guid?>(serializer.Serialize(id)).ShouldBe(id);
+        serializer.Deserialize<UnknownType>(serializer.Serialize(new UnknownType { Anything = "x" })).Anything.ShouldBe("x");
+    }
+
+
     [Fact(DisplayName = "Json - a standalone DefaultJsonSerializer handles primitives")]
     public void Primitives_StandaloneSerializer()
     {
@@ -289,3 +326,7 @@ public class SerializationTests
         collected[2].Title.ShouldBe("e3");
     }
 }
+
+
+[JsonSerializable(typeof(UnknownType))]
+partial class StandaloneJsonContext : JsonSerializerContext;

@@ -174,11 +174,11 @@ public static class Json
         foreach (var cfg in configurators)
             cfg(s.Options);
 
-        // Sync the live chain to the currently registered resolvers, then add it as the single
-        // entry in the options' resolver chain. From here on, resolvers added via AddResolver
+        // Sync the live chain to the currently registered resolvers, then add it ahead of the built-in
+        // primitives in the options' resolver chain. From here on, resolvers added via AddResolver
         // flow through the live chain without ever mutating these (soon-to-be-frozen) options.
         liveChain.Reset(resolvers);
-        s.Options.TypeInfoResolverChain.Add(liveChain);
+        s.AddResolver(liveChain);
         return s;
     }
 
